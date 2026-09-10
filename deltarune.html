@@ -43,6 +43,7 @@
     </a>
 
     <div class="cm-header-actions">
+      <div id="crimx-auth-slot"></div>
       <a href="index.html" class="cm-btn cm-btn-blue">
         <span>←</span> All Games
       </a>
@@ -84,6 +85,7 @@
           <span class="cm-tile-badge" style="position:static; background:rgba(0, 240, 255, 0.85); color:#000;">POPULAR</span>
         </div>
         <div class="cm-player-actions">
+          <button class="cm-btn cm-btn-blue" onclick="openCrimXModal()" title="Manage CrimX Cloud Saves">☁️ Cloud Saves</button>
           <button class="cm-btn cm-btn-blue" onclick="reloadGame()" title="Restart Game">🔄 Reload</button>
           <button class="cm-btn cm-btn-blue" onclick="popoutGame()" title="Open game directly in a new tab">↗ New Tab</button>
           <button class="cm-btn cm-btn-yellow" onclick="toggleFullscreen()" title="Play Fullscreen">⛶ Fullscreen</button>
@@ -153,5 +155,6 @@
   <script src="games-data.js"></script>
   <script src="panic-system.js"></script>
   <script src="game-page.js"></script>
+  <script type="module" src="crimx-auth.js"></script>
 </body>
 </html>
