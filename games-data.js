@@ -56,33 +56,6 @@ const GAMES_DB = [
     bgGradient: 'linear-gradient(135deg, #09122c, #132448)'
   },
   {
-    id: 'tcor',
-    slug: 'tcor',
-    url: 'tcor.html',
-    title: 'The Chronicles of Restrictia',
-    category: 'Strategy & Action',
-    categorySlug: 'action',
-    rating: '4.8',
-    plays: '95K',
-    tags: ['3D', 'Cyberpunk', 'BabylonJS', 'FPS', 'Story'],
-    desc: 'Immersive 3D dystopian cyberpunk adventure powered by Babylon.js with real-time lighting, interactive dialogue, environmental quests, and stealth exploration.',
-    howToPlay: 'Explore the neon-lit corridors of Restrictia, avoid high-security surveillance, interact with NPCs to receive objectives, and boost your morale.',
-    controls: [
-      { key: 'WASD', desc: 'Move around' },
-      { key: 'Mouse', desc: 'Look & interact' },
-      { key: 'E', desc: 'Interact with objects & NPCs' },
-      { key: 'Space', desc: 'Jump' },
-      { key: 'Shift', desc: 'Sprint' },
-      { key: 'Esc', desc: 'Menu / Pause' }
-    ],
-    gamePath: 'games/TCOR/index.html',
-    icon: '🤖',
-    badge: '3D RPG',
-    badgeColor: '#00e5ff',
-    thumbnail: '',
-    bgGradient: 'linear-gradient(135deg, #150d2a, #271447)'
-  },
-  {
     id: 'geometry-dash',
     slug: 'geometry-dash',
     url: 'geometry-dash.html',
@@ -154,28 +127,6 @@ const GAMES_DB = [
     badgeColor: '#00e676',
     thumbnail: 'https://738501629-461082748261058427.preview.editmysite.com/uploads/b/139890129-817510652323129407/files/media/graphics/splash/mobile/cover-start.jpg',
     bgGradient: 'linear-gradient(135deg, #1d1912, #393222)'
-  },
-  {
-    id: 'baseball',
-    slug: 'baseball',
-    url: 'baseball.html',
-    title: 'Google Doodle Baseball',
-    category: 'Arcade & Sports',
-    categorySlug: 'arcade',
-    rating: '4.8',
-    plays: '190K',
-    tags: ['Baseball', 'Sports', 'Arcade', 'Google Doodle', 'Fun'],
-    desc: 'Step up to the plate in Google’s legendary 4th of July baseball showdown. Hit home runs with peanuts, burgers, hot dogs, and fries!',
-    howToPlay: 'Watch the pitcher closely. When the ball crosses the strike zone, click or press space to swing your bat and launch that ball out of the ballpark!',
-    controls: [
-      { key: 'Space / Left Click', desc: 'Swing bat' }
-    ],
-    gamePath: 'games/DoodleBaseball.html',
-    icon: '⚾',
-    badge: 'CLASSIC',
-    badgeColor: '#ffd000',
-    thumbnail: 'style.css',
-    bgGradient: 'linear-gradient(135deg, #2b1704, #4e2b08)'
   }
 ];
 
@@ -183,3 +134,4 @@ const GAMES_DB = [
 function getGameById(idOrSlug) {
   return GAMES_DB.find(g => g.id === idOrSlug || g.slug === idOrSlug);
 }
+

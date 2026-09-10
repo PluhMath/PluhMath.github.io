@@ -25,7 +25,7 @@
     <div class="cm-topbar-links">
       <span>100% Free & Unblocked</span>
       <span>•</span>
-      <span>7 Games Ready to Play</span>
+      <span>5 Games Ready to Play</span>
       <span>•</span>
       <span>No Downloads Required</span>
     </div>
@@ -39,7 +39,7 @@
     <a class="cm-logo" href="index.html" title="PluhMath Home">
       <div class="cm-logo-box">PLUH</div>
       <div class="cm-logo-text">
-        <span class="cm-logo-main">MATH<span>GAMES</span></span>
+        <span class="cm-logo-main">MATH</span>
         <span class="cm-logo-sub">Unblocked Arcade</span>
       </div>
     </a>
@@ -58,7 +58,10 @@
       <button class="cm-btn cm-btn-blue" id="cloak-btn" title="Disguise this browser tab">
         <span>🎭</span> Cloak Tab
       </button>
-      <button class="cm-btn cm-btn-panic" onclick="triggerPanic()" title="Quick Panic Button (Shortcut: ])">
+      <button class="cm-btn cm-btn-blue panic-settings-trigger" onclick="openPanicModal()" title="Choose where Panic Mode redirects you">
+        <span>⚙️</span> Panic URL
+      </button>
+      <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Quick Panic Button (Shortcut: ])">
         🚨 Panic
       </button>
     </div>
@@ -90,7 +93,7 @@
             <span>▶</span> PLAY NOW
           </a>
           <button class="cm-btn cm-btn-blue" onclick="document.getElementById('all-games-section').scrollIntoView({behavior:'smooth'})">
-            Browse All 7 Games ↓
+            Browse All 5 Games ↓
           </button>
         </div>
       </div>
@@ -112,7 +115,7 @@
     <!-- All Games Section -->
     <section id="all-games-section">
       <div class="cm-section-header">
-        <h2 class="cm-section-title" id="all-games-title">🕹️ ALL PLUHMATH GAMES</h2>
+        <h2 class="cm-section-title" id="all-games-title">🕹️ ALL UNBLOCKED GAMES</h2>
         <span style="font-size:0.9rem; color:var(--cm-text-dim);" id="game-count-label">7 Games</span>
       </div>
       <div class="cm-games-grid" id="all-games-grid">
@@ -126,7 +129,7 @@
   <footer class="cm-footer">
     <div class="cm-footer-logo">
       <div class="cm-logo-box" style="font-size:1.1rem; padding:0.1rem 0.4rem;">PLUH</div>
-      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH GAMES</span>
+      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH</span>
     </div>
     <p class="cm-footer-disclaimer">
       PluhMath brings you the best unblocked games directly in your browser. Fast loading, responsive, and always free to play.
@@ -134,6 +137,7 @@
   </footer>
 
   <script src="games-data.js"></script>
+  <script src="panic-system.js"></script>
   <script>
     let activeCat = 'all';
     let searchQ = '';

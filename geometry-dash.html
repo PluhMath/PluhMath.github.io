@@ -35,7 +35,7 @@
     <a class="cm-logo" href="index.html" title="PluhMath Home">
       <div class="cm-logo-box">PLUH</div>
       <div class="cm-logo-text">
-        <span class="cm-logo-main">MATH<span>GAMES</span></span>
+        <span class="cm-logo-main">MATH</span>
         <span class="cm-logo-sub">Unblocked Arcade</span>
       </div>
     </a>
@@ -44,7 +44,10 @@
       <a href="index.html" class="cm-btn cm-btn-blue">
         <span>←</span> All Games
       </a>
-      <button class="cm-btn cm-btn-panic" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
+      <button class="cm-btn cm-btn-blue panic-settings-trigger" onclick="openPanicModal()" title="Choose where Panic Mode redirects you">
+        <span>⚙️</span> Panic URL
+      </button>
+      <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
         🚨 Panic
       </button>
     </div>
@@ -132,7 +135,7 @@
   <footer class="cm-footer">
     <div class="cm-footer-logo">
       <div class="cm-logo-box" style="font-size:1.1rem; padding:0.1rem 0.4rem;">PLUH</div>
-      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH GAMES</span>
+      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH</span>
     </div>
     <p class="cm-footer-disclaimer">
       PluhMath brings you the best unblocked games directly in your browser. Fast loading, responsive, and always free to play.
@@ -140,6 +143,7 @@
   </footer>
 
   <script src="games-data.js"></script>
+  <script src="panic-system.js"></script>
   <script src="game-page.js"></script>
 </body>
 </html>

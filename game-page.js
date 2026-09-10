@@ -167,13 +167,16 @@ function setupRatingButtons(gameId) {
 
 // Panic Function
 function triggerPanic() {
-  window.location.replace('https://classroom.google.com');
+  const target = (typeof getPanicUrl === 'function') 
+    ? getPanicUrl() 
+    : (localStorage.getItem('pluhmath_panic_url') || 'https://classroom.google.com');
+  window.location.replace(target);
 }
 
 // Shortcuts
 function setupGlobalShortcuts() {
   window.addEventListener('keydown', (e) => {
-    if (e.key === ']') {
+    if (e.key === ']' && document.activeElement.tagName !== 'INPUT') {
       triggerPanic();
     }
   });
