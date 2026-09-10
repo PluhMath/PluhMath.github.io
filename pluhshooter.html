@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ057VF3NC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QZ057VF3NC');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PluhShooter.io — Play Free Unblocked on PluhMath</title>
+  <meta name="description" content="Play PluhShooter.io free and unblocked on PluhMath. Fast 3D voxel multiplayer FPS with offline bots, FFA, team deathmatch, and zombie survival modes.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ffd000%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>∑</text></svg>">
+  <link rel="stylesheet" href="coolmath.css">
+</head>
+<body data-game-id="pluhshooter">
+
+  <!-- Top Bar -->
+  <div class="cm-topbar">
+    <div class="cm-topbar-links">
+      <span>100% Free & Unblocked</span>
+      <span>•</span>
+      <span>Ultra Low Latency WebGL</span>
+    </div>
+    <div class="cm-topbar-links">
+      <span>Quick Panic Key: <kbd style="background:#000; color:#ffd000; padding:1px 5px; border-radius:3px;">]</kbd></span>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <header class="cm-navbar">
+    <a class="cm-logo" href="index.html" title="PluhMath Home">
+      <div class="cm-logo-box">PLUH</div>
+      <div class="cm-logo-text">
+        <span class="cm-logo-main">MATH<span>GAMES</span></span>
+        <span class="cm-logo-sub">Unblocked Arcade</span>
+      </div>
+    </a>
+
+    <!-- Header Actions -->
+    <div class="cm-header-actions">
+      <a href="index.html" class="cm-btn cm-btn-blue">
+        <span>←</span> All Games
+      </a>
+      <button class="cm-btn cm-btn-panic" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
+        🚨 Panic
+      </button>
+    </div>
+  </header>
+
+  <!-- Categories Subnav -->
+  <nav class="cm-cat-nav">
+    <a href="index.html" class="cm-cat-link">All Games</a>
+    <a href="index.html?cat=strategy" class="cm-cat-link">Strategy</a>
+    <a href="index.html?cat=skill" class="cm-cat-link">Skill</a>
+    <a href="index.html?cat=3d" class="cm-cat-link active">3D & FPS</a>
+    <a href="index.html?cat=runner" class="cm-cat-link">Runner</a>
+    <a href="index.html?cat=arcade" class="cm-cat-link">Arcade</a>
+  </nav>
+
+  <!-- Main Game Layout -->
+  <main class="cm-container cm-game-layout">
+
+    <!-- Breadcrumbs -->
+    <div class="cm-breadcrumbs">
+      <a href="index.html">Home</a>
+      <span>/</span>
+      <a href="index.html?cat=3d">3D & FPS</a>
+      <span>/</span>
+      <span style="color:#fff;">PluhShooter.io</span>
+    </div>
+
+    <!-- Player Box -->
+    <section class="cm-player-box">
+      <div class="cm-player-topbar">
+        <div class="cm-player-title">
+          <span>🔫</span>
+          <span id="game-title-el">PluhShooter.io</span>
+          <span class="cm-tile-badge" style="position:static; background:#ff4757;">HOT</span>
+        </div>
+        <div class="cm-player-actions">
+          <button class="cm-btn cm-btn-blue" onclick="reloadGame()" title="Restart Game">🔄 Reload</button>
+          <button class="cm-btn cm-btn-blue" onclick="popoutGame()" title="Open game directly in a new tab">↗ New Tab</button>
+          <button class="cm-btn cm-btn-yellow" onclick="toggleFullscreen()" title="Play Fullscreen">⛶ Fullscreen</button>
+        </div>
+      </div>
+
+      <!-- Iframe Wrapper -->
+      <div class="cm-game-iframe-wrapper" id="game-frame-wrapper">
+        <iframe id="game-iframe" class="cm-game-iframe" src="games/PluhShooter.io/index.html" allow="autoplay; fullscreen; gamepad; cross-origin-isolated; pointer-lock"></iframe>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="cm-action-bar">
+        <div class="cm-rating-box">
+          <button class="cm-rate-btn" id="like-btn">👍 <span id="like-count">1,240 Likes</span></button>
+          <button class="cm-rate-btn" id="dislike-btn">👎</button>
+          <span style="color:var(--cm-yellow); font-weight:800; font-size:0.9rem;">★ 4.9 Rating</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="cm-btn cm-btn-blue" onclick="navigator.clipboard.writeText(window.location.href); alert('Game link copied to clipboard!');">📋 Share Game</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game Information & Controls -->
+    <section class="cm-info-box">
+      <div>
+        <h2 class="cm-info-title">About PluhShooter.io</h2>
+        <p id="game-desc-el" style="line-height:1.6; color:var(--cm-text-light); margin-top:0.75rem;">
+          Fast-paced 3D voxel first-person shooter. Battle smart AI bots or real players in Free For All and Team Deathmatch, or survive endless waves of zombies.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="cm-info-title" style="font-size:1.15rem;">Controls</h3>
+        <div class="cm-controls-grid" id="controls-grid" style="margin-top:0.75rem;">
+          <!-- Injected via game-page.js -->
+        </div>
+      </div>
+
+      <div>
+        <h3 class="cm-info-title" style="font-size:1.15rem;">How To Play</h3>
+        <p id="game-howtoplay-el" style="line-height:1.6; color:var(--cm-text-light); margin-top:0.75rem;">
+          Eliminate opponents to earn score and climb the leaderboard. Keep moving, aim for headshots, and switch weapons according to combat range.
+        </p>
+      </div>
+    </section>
+
+    <!-- Related Games -->
+    <section>
+      <div class="cm-section-header">
+        <h2 class="cm-section-title">🕹️ MORE COOL GAMES</h2>
+      </div>
+      <div class="cm-games-grid" id="related-games-grid">
+        <!-- Injected via game-page.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="cm-footer">
+    <div class="cm-footer-logo">
+      <div class="cm-logo-box" style="font-size:1.1rem; padding:0.1rem 0.4rem;">PLUH</div>
+      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH GAMES</span>
+    </div>
+    <p class="cm-footer-disclaimer">
+      PluhMath brings you the best unblocked games directly in your browser. Fast loading, responsive, and always free to play.
+    </p>
+  </footer>
+
+  <script src="games-data.js"></script>
+  <script src="game-page.js"></script>
+</body>
+</html>

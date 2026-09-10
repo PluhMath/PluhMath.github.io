@@ -1,10 +1,272 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>403 Forbidden</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ057VF3NC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QZ057VF3NC');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PluhMath — Free Unblocked Games & Math Arcade</title>
+  <meta name="description" content="Play the best unblocked games free on PluhMath! Run 3, PluhShooter.io, Geometry Dash Subzero, TCOR, Drift Boss, and more.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ffd000%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>∑</text></svg>">
+  <link rel="stylesheet" href="coolmath.css">
 </head>
 <body>
-    <h1>Error 403: Forbidden</h1>
-    <p>The site or server has blocked you from seeing this page. Please try again later.</p>
+
+  <!-- Top Info Bar -->
+  <div class="cm-topbar">
+    <div class="cm-topbar-links">
+      <span>100% Free & Unblocked</span>
+      <span>•</span>
+      <span>7 Games Ready to Play</span>
+      <span>•</span>
+      <span>No Downloads Required</span>
+    </div>
+    <div class="cm-topbar-links">
+      <span>Teacher coming? Press <kbd style="background:#000; color:#ffd000; padding:2px 6px; border-radius:3px; font-weight:bold;">]</kbd> for instant panic</span>
+    </div>
+  </div>
+
+  <!-- Main Navigation Header -->
+  <header class="cm-navbar">
+    <a class="cm-logo" href="index.html" title="PluhMath Home">
+      <div class="cm-logo-box">PLUH</div>
+      <div class="cm-logo-text">
+        <span class="cm-logo-main">MATH<span>GAMES</span></span>
+        <span class="cm-logo-sub">Unblocked Arcade</span>
+      </div>
+    </a>
+
+    <!-- Coolmath Search Bar -->
+    <div class="cm-search-wrapper">
+      <input type="text" id="search-input" class="cm-search-input" placeholder="Search games (Run 3, PluhShooter, Drift...)" autocomplete="off">
+      <button class="cm-search-btn" title="Search">🔍</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="cm-header-actions">
+      <button class="cm-btn cm-btn-yellow" id="random-btn" title="Play a random unblocked game">
+        <span>🎲</span> Surprise Me
+      </button>
+      <button class="cm-btn cm-btn-blue" id="cloak-btn" title="Disguise this browser tab">
+        <span>🎭</span> Cloak Tab
+      </button>
+      <button class="cm-btn cm-btn-panic" onclick="triggerPanic()" title="Quick Panic Button (Shortcut: ])">
+        🚨 Panic
+      </button>
+    </div>
+  </header>
+
+  <!-- Categories Subnav -->
+  <nav class="cm-cat-nav" id="category-nav">
+    <a href="#" class="cm-cat-link active" data-cat="all">All Games</a>
+    <a href="#" class="cm-cat-link" data-cat="strategy">Strategy</a>
+    <a href="#" class="cm-cat-link" data-cat="skill">Skill</a>
+    <a href="#" class="cm-cat-link" data-cat="3d">3D & FPS</a>
+    <a href="#" class="cm-cat-link" data-cat="runner">Runner</a>
+    <a href="#" class="cm-cat-link" data-cat="arcade">Arcade</a>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="cm-container">
+
+    <!-- Featured Spotlight / Game of the Day -->
+    <section class="cm-spotlight" id="featured-banner">
+      <div style="z-index: 2; max-width: 650px;">
+        <span class="cm-spotlight-badge">★ GAME OF THE DAY</span>
+        <h1 class="cm-spotlight-title" id="spotlight-title">PluhShooter.io</h1>
+        <p class="cm-spotlight-desc" id="spotlight-desc">
+          Fast-paced 3D voxel first-person shooter! Fight bots or players in FFA, Team Deathmatch, or survive waves of Zombies with smooth WebGL rendering.
+        </p>
+        <div class="cm-spotlight-actions">
+          <a href="pluhshooter.html" class="cm-btn cm-btn-yellow" style="font-size:1.1rem; padding:0.75rem 1.6rem;" id="spotlight-play-link">
+            <span>▶</span> PLAY NOW
+          </a>
+          <button class="cm-btn cm-btn-blue" onclick="document.getElementById('all-games-section').scrollIntoView({behavior:'smooth'})">
+            Browse All 7 Games ↓
+          </button>
+        </div>
+      </div>
+      <div style="font-size: 7rem; opacity: 0.85; filter: drop-shadow(0 0 25px rgba(255, 208, 0, 0.4)); user-select: none;">
+        🔫
+      </div>
+    </section>
+
+    <!-- Popular Section -->
+    <section id="popular-section">
+      <div class="cm-section-header">
+        <h2 class="cm-section-title">★ POPULAR ON PLUHMATH</h2>
+      </div>
+      <div class="cm-games-grid" id="popular-grid">
+        <!-- Rendered by main.js -->
+      </div>
+    </section>
+
+    <!-- All Games Section -->
+    <section id="all-games-section">
+      <div class="cm-section-header">
+        <h2 class="cm-section-title" id="all-games-title">🕹️ ALL PLUHMATH GAMES</h2>
+        <span style="font-size:0.9rem; color:var(--cm-text-dim);" id="game-count-label">7 Games</span>
+      </div>
+      <div class="cm-games-grid" id="all-games-grid">
+        <!-- Rendered by main.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="cm-footer">
+    <div class="cm-footer-logo">
+      <div class="cm-logo-box" style="font-size:1.1rem; padding:0.1rem 0.4rem;">PLUH</div>
+      <span style="font-weight:900; font-size:1.3rem; color:#fff;">MATH GAMES</span>
+    </div>
+    <p class="cm-footer-disclaimer">
+      PluhMath brings you the best unblocked games directly in your browser. Fast loading, responsive, and always free to play.
+    </p>
+  </footer>
+
+  <script src="games-data.js"></script>
+  <script>
+    let activeCat = 'all';
+    let searchQ = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check query param for category
+      const params = new URLSearchParams(window.location.search);
+      const catParam = params.get('cat');
+      if (catParam) {
+        activeCat = catParam;
+        document.querySelectorAll('.cm-cat-link').forEach(link => {
+          link.classList.toggle('active', link.dataset.cat === catParam);
+        });
+      }
+
+      renderHomePage();
+      setupEvents();
+    });
+
+    function renderHomePage() {
+      const allGrid = document.getElementById('all-games-grid');
+      const popGrid = document.getElementById('popular-grid');
+      const countLabel = document.getElementById('game-count-label');
+
+      // Filter
+      const filtered = GAMES_DB.filter(game => {
+        if (activeCat !== 'all' && game.categorySlug !== activeCat) return false;
+        if (searchQ) {
+          const q = searchQ.toLowerCase();
+          return game.title.toLowerCase().includes(q) || game.tags.some(t => t.toLowerCase().includes(q)) || game.desc.toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      countLabel.textContent = `${filtered.length} Game${filtered.length === 1 ? '' : 's'}`;
+
+      const cardHtml = (g) => `
+        <a href="${g.url}" class="cm-tile">
+          <div class="cm-tile-thumb-container">
+            <span class="cm-tile-badge" style="background:${g.badgeColor}">${g.badge}</span>
+            ${g.thumbnail 
+              ? `<img class="cm-tile-thumb" src="${g.thumbnail}" alt="${g.title}" onerror="this.parentElement.innerHTML='<div class=\\'cm-tile-graphic\\' style=\\'background:${g.bgGradient}\\'>${g.icon}</div>'" />`
+              : `<div class="cm-tile-graphic" style="background:${g.bgGradient}">${g.icon}</div>`
+            }
+            <div class="cm-tile-play-overlay">
+              <div class="cm-play-circle">▶</div>
+            </div>
+          </div>
+          <div class="cm-tile-info">
+            <div class="cm-tile-title">${g.title}</div>
+            <div class="cm-tile-meta">
+              <span>${g.category}</span>
+              <span class="cm-tile-rating">★ ${g.rating}</span>
+            </div>
+          </div>
+        </a>
+      `;
+
+      allGrid.innerHTML = filtered.map(cardHtml).join('');
+
+      // Popular grid (Run 3, PluhShooter, Geometry Dash, Drift Boss)
+      if (popGrid && !searchQ && activeCat === 'all') {
+        document.getElementById('popular-section').style.display = '';
+        const popular = GAMES_DB.filter(g => ['run3', 'pluhshooter', 'geometry-dash', 'drift-boss'].includes(g.id));
+        popGrid.innerHTML = popular.map(cardHtml).join('');
+      } else {
+        document.getElementById('popular-section').style.display = 'none';
+      }
+    }
+
+    function setupEvents() {
+      // Category links
+      document.querySelectorAll('.cm-cat-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelectorAll('.cm-cat-link').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+          activeCat = link.dataset.cat;
+          renderHomePage();
+        });
+      });
+
+      // Search
+      const input = document.getElementById('search-input');
+      if (input) {
+        input.addEventListener('input', (e) => {
+          searchQ = e.target.value.trim();
+          renderHomePage();
+        });
+      }
+
+      // Random button
+      document.getElementById('random-btn').addEventListener('click', () => {
+        const rand = GAMES_DB[Math.floor(Math.random() * GAMES_DB.length)];
+        if (rand) window.location.href = rand.url;
+      });
+
+      // Cloak
+      document.getElementById('cloak-btn').addEventListener('click', () => {
+        const choice = prompt('Enter cloak disguise:\n1. Google Classroom\n2. Google Docs\n3. Desmos Calculator\n4. Default', '1');
+        if (choice === '1') {
+          document.title = 'Classes';
+          setFavicon('https://ssl.gstatic.com/classroom/favicon.png');
+        } else if (choice === '2') {
+          document.title = 'Google Docs';
+          setFavicon('https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico');
+        } else if (choice === '3') {
+          document.title = 'Desmos | Graphing Calculator';
+          setFavicon('https://www.desmos.com/favicon.ico');
+        } else {
+          document.title = 'PluhMath — Free Unblocked Games & Math Arcade';
+        }
+      });
+
+      // Panic
+      window.addEventListener('keydown', (e) => {
+        if (e.key === ']') triggerPanic();
+      });
+    }
+
+    function setFavicon(url) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = url;
+    }
+
+    function triggerPanic() {
+      window.location.replace('https://classroom.google.com');
+    }
+  </script>
 </body>
 </html>
