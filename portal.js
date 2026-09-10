@@ -71,16 +71,26 @@ const GAMES_DATA = [
     bgGradient: 'linear-gradient(135deg, #1c1917, #44403c)'
   },
   {
-    id: 'baseball',
-    title: 'Google Doodle Baseball',
-    category: 'arcade',
-    tags: ['Baseball', 'Sports', 'Arcade', 'Google Doodle', 'Fun'],
-    badges: [{ text: 'Classic', class: 'badge-classic' }],
-    desc: "Step up to the plate in Google's iconic 4th of July baseball showdown. Hit grand slams with delicious summer ballpark sluggers!",
-    path: 'games/DoodleBaseball.html',
-    image: 'style.css',
-    icon: '⚾',
-    bgGradient: 'linear-gradient(135deg, #2e1065, #701a75)'
+    id: 'undertale',
+    title: 'Undertale',
+    category: 'rpg',
+    tags: ['RPG', 'Undertale', 'Sans', 'Bullet Hell', 'Story'],
+    badges: [{ text: 'Legendary', class: 'badge-hot' }],
+    desc: 'The iconic indie RPG masterpiece. Dodge attacks, navigate bullet hell encounters, and survive with your soul.',
+    path: 'games/Undertale/Undertale-main/index.html',
+    icon: '❤️',
+    bgGradient: 'linear-gradient(135deg, #111116, #1f1b29)'
+  },
+  {
+    id: 'deltarune',
+    title: 'Deltarune',
+    category: 'rpg',
+    tags: ['RPG', 'Deltarune', 'Toby Fox', 'Story', 'Kris'],
+    badges: [{ text: 'Popular', class: 'badge-3d' }],
+    desc: 'Explore the mysterious Dark World with Kris and Susie, graze bullets for TP, and conquer intense encounters.',
+    path: 'games/Deltarune/index.html',
+    icon: '🔷',
+    bgGradient: 'linear-gradient(135deg, #09111e, #142850)'
   }
 ];
 

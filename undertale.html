@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ057VF3NC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QZ057VF3NC');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undertale — Play Free Unblocked on PluhMath</title>
+  <meta name="description" content="Play Undertale unblocked free on PluhMath. Dodge bones and blasters in the legendary Sans boss battle with full soul mechanics and retro chiptune audio.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2300f0ff%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>∑</text></svg>">
+  <link rel="stylesheet" href="coolmath.css">
+</head>
+<body data-game-id="undertale">
+
+  <!-- Minimalist Top Info Bar -->
+  <div class="cm-topbar">
+    <div class="cm-topbar-links">
+      <span>100% Free & Unblocked</span>
+      <span>•</span>
+      <span>Undertale Web Port</span>
+    </div>
+    <div class="cm-topbar-links">
+      <span>Panic Shortcut: <kbd style="background:#000; color:#00f0ff; padding:1px 5px; border-radius:3px;">]</kbd></span>
+    </div>
+  </div>
+
+  <!-- Minimalist Navbar -->
+  <header class="cm-navbar">
+    <a class="cm-logo" href="index.html" title="PluhMath Home">
+      <div class="cm-logo-box">∑</div>
+      <div class="cm-logo-text">
+        <span class="cm-logo-main">PLUHMATH</span>
+        <span class="cm-logo-sub">Arcade</span>
+      </div>
+    </a>
+
+    <div class="cm-header-actions">
+      <a href="index.html" class="cm-btn cm-btn-blue">
+        <span>←</span> All Games
+      </a>
+      <button class="cm-btn cm-btn-blue panic-settings-trigger" onclick="openPanicModal()" title="Configure Panic Mode Destination URL">
+        <span>⚙️</span> Panic URL
+      </button>
+      <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
+        🚨 Panic
+      </button>
+    </div>
+  </header>
+
+  <!-- Categories Subnav -->
+  <nav class="cm-cat-nav">
+    <a href="index.html" class="cm-cat-link">All Games</a>
+    <a href="index.html?cat=rpg" class="cm-cat-link active">RPG & Story</a>
+    <a href="index.html?cat=3d" class="cm-cat-link">3D & FPS</a>
+    <a href="index.html?cat=runner" class="cm-cat-link">Runner & Rhythm</a>
+    <a href="index.html?cat=skill" class="cm-cat-link">Skill & Strategy</a>
+  </nav>
+
+  <!-- Main Game Layout -->
+  <main class="cm-container cm-game-layout">
+
+    <div class="cm-breadcrumbs">
+      <a href="index.html">Home</a>
+      <span>/</span>
+      <a href="index.html?cat=rpg">RPG & Story</a>
+      <span>/</span>
+      <span style="color:#fff;">Undertale</span>
+    </div>
+
+    <!-- Player Box -->
+    <section class="cm-player-box">
+      <div class="cm-player-topbar">
+        <div class="cm-player-title">
+          <span>❤️</span>
+          <span id="game-title-el">Undertale</span>
+          <span class="cm-tile-badge" style="position:static; background:rgba(239, 68, 68, 0.85);">LEGENDARY</span>
+        </div>
+        <div class="cm-player-actions">
+          <button class="cm-btn cm-btn-blue" onclick="reloadGame()" title="Restart Game">🔄 Reload</button>
+          <button class="cm-btn cm-btn-blue" onclick="popoutGame()" title="Open game directly in a new tab">↗ New Tab</button>
+          <button class="cm-btn cm-btn-yellow" onclick="toggleFullscreen()" title="Play Fullscreen">⛶ Fullscreen</button>
+        </div>
+      </div>
+
+      <!-- Iframe Wrapper -->
+      <div class="cm-game-iframe-wrapper" id="game-frame-wrapper">
+        <iframe id="game-iframe" class="cm-game-iframe" src="games/Undertale/Undertale-main/index.html" allow="autoplay; fullscreen; gamepad"></iframe>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="cm-action-bar">
+        <div class="cm-rating-box">
+          <button class="cm-rate-btn" id="like-btn">👍 <span id="like-count">5,200 Likes</span></button>
+          <button class="cm-rate-btn" id="dislike-btn">👎</button>
+          <span style="color:var(--text-white); font-weight:600; font-size:0.85rem;">★ 5.0 Rating</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="cm-btn cm-btn-blue" onclick="navigator.clipboard.writeText(window.location.href); alert('Game link copied to clipboard!');">📋 Share</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game Information & Controls -->
+    <section class="cm-info-box">
+      <div>
+        <h2 class="cm-info-title">About Undertale</h2>
+        <p id="game-desc-el" style="line-height:1.6; color:var(--text-muted); margin-top:0.6rem;">
+          The acclaimed indie RPG masterpiece. Dodge bones and gaster blasters in the legendary Sans boss encounter, navigate dialogue, and survive with your soul intact.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="cm-info-title" style="font-size:1.05rem;">Controls</h3>
+        <div class="cm-controls-grid" id="controls-grid" style="margin-top:0.6rem;"></div>
+      </div>
+
+      <div>
+        <h3 class="cm-info-title" style="font-size:1.05rem;">How To Play</h3>
+        <p id="game-howtoplay-el" style="line-height:1.6; color:var(--text-muted); margin-top:0.6rem;">
+          Use Arrow Keys to dodge bones, blue attacks, and gaster blasters. Watch your soul gravity in blue and red modes. Select Fight, Act, Item, or Mercy on your turn!
+        </p>
+      </div>
+    </section>
+
+    <!-- More Games -->
+    <section>
+      <div class="cm-section-header">
+        <h2 class="cm-section-title">More Unblocked Games</h2>
+      </div>
+      <div class="cm-games-grid" id="related-games-grid"></div>
+    </section>
+
+  </main>
+
+  <footer class="cm-footer">
+    <div class="cm-footer-logo">
+      <div class="cm-logo-box" style="font-size:0.9rem; width:26px; height:26px;">∑</div>
+      <span style="font-weight:700; font-size:1.1rem; color:#fff;">PLUHMATH</span>
+    </div>
+    <p class="cm-footer-disclaimer">
+      Sleek, fast, unblocked web games. Zero clutter, always available.
+    </p>
+  </footer>
+
+  <script src="games-data.js"></script>
+  <script src="panic-system.js"></script>
+  <script src="game-page.js"></script>
+</body>
+</html>
