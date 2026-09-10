@@ -7,6 +7,7 @@ const GAMES_DB = [
     title: 'PluhShooter.io',
     category: '3D & FPS',
     categorySlug: '3d',
+    categories: ['3d', 'action', 'arcade'],
     rating: '4.9',
     plays: '142K',
     tags: ['3D', 'Voxel', 'FPS', 'Multiplayer', 'Zombies'],
@@ -37,6 +38,7 @@ const GAMES_DB = [
     title: 'Run 3',
     category: 'Skill & Runner',
     categorySlug: 'runner',
+    categories: ['runner', 'skill', '3d'],
     rating: '4.9',
     plays: '380K',
     tags: ['Runner', '3D', 'Space', 'Classic', 'Alien'],
@@ -62,6 +64,7 @@ const GAMES_DB = [
     title: 'Geometry Dash Subzero',
     category: 'Skill & Runner',
     categorySlug: 'runner',
+    categories: ['runner', 'skill', 'arcade'],
     rating: '4.9',
     plays: '275K',
     tags: ['Rhythm', 'Platformer', 'Music', 'Neon', 'Hard'],
@@ -86,6 +89,7 @@ const GAMES_DB = [
     title: 'PluhUs: Browser Edition',
     category: 'Strategy & Action',
     categorySlug: 'strategy',
+    categories: ['strategy', 'arcade', 'action'],
     rating: '4.7',
     plays: '160K',
     tags: ['Among Us', 'Impostor', 'Sabotage', '2D', 'Casual'],
@@ -113,6 +117,7 @@ const GAMES_DB = [
     title: 'Drift Boss',
     category: 'Skill & Runner',
     categorySlug: 'skill',
+    categories: ['skill', 'runner', 'arcade', '3d'],
     rating: '4.8',
     plays: '210K',
     tags: ['Drifting', 'Car', 'Arcade', 'Timing', 'High Score'],
@@ -134,4 +139,3 @@ const GAMES_DB = [
 function getGameById(idOrSlug) {
   return GAMES_DB.find(g => g.id === idOrSlug || g.slug === idOrSlug);
 }
-

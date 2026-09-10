@@ -20,6 +20,73 @@ function triggerPanic() {
   window.location.replace(target);
 }
 
+// Universal Tab Cloaker (Enter URL directly)
+function cloakTabPrompt() {
+  const current = localStorage.getItem('pluhmath_cloak_url') || 'https://classroom.google.com';
+  const urlInput = prompt('Enter the URL to cloak this tab as (e.g. https://classroom.google.com or leave empty to reset):', current);
+  if (urlInput !== null) {
+    applyCloakByUrl(urlInput.trim());
+  }
+}
+
+function applyCloakByUrl(url) {
+  if (!url || url.toLowerCase() === 'reset' || url.toLowerCase() === 'default') {
+    localStorage.removeItem('pluhmath_cloak_url');
+    document.title = 'PluhMath — Free Unblocked Games & Math Arcade';
+    setFavicon('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ffd000%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>∑</text></svg>');
+    return;
+  }
+
+  let finalUrl = url;
+  if (!/^https?:\/\//i.test(finalUrl)) {
+    finalUrl = 'https://' + finalUrl;
+  }
+
+  localStorage.setItem('pluhmath_cloak_url', finalUrl);
+
+  const lower = finalUrl.toLowerCase();
+  if (lower.includes('classroom')) {
+    document.title = 'Classes';
+    setFavicon('https://ssl.gstatic.com/classroom/favicon.png');
+  } else if (lower.includes('docs.google')) {
+    document.title = 'Google Docs';
+    setFavicon('https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico');
+  } else if (lower.includes('drive.google')) {
+    document.title = 'My Drive - Google Drive';
+    setFavicon('https://ssl.gstatic.com/docs/doclist/images/drive_2022q3_32dp.png');
+  } else if (lower.includes('desmos')) {
+    document.title = 'Desmos | Graphing Calculator';
+    setFavicon('https://www.desmos.com/favicon.ico');
+  } else if (lower.includes('canvas') || lower.includes('instructure')) {
+    document.title = 'Dashboard';
+    setFavicon('https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico');
+  } else {
+    try {
+      const parsed = new URL(finalUrl);
+      document.title = parsed.hostname;
+      setFavicon(`https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=64`);
+    } catch {
+      document.title = finalUrl;
+    }
+  }
+}
+
+function setFavicon(url) {
+  let link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  link.href = url;
+}
+
+// Restore cloak on load across all pages
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('pluhmath_cloak_url');
+  if (saved) applyCloakByUrl(saved);
+});
+
 // Global hotkey: ']' immediately redirects to panic URL
 window.addEventListener('keydown', (e) => {
   if (e.key === ']' && document.activeElement.tagName !== 'INPUT') {
