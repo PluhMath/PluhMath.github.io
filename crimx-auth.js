@@ -1,5 +1,5 @@
 // PluhMath - CrimX Account System & Cloud Save Synchronization Engine
-// Integrates with official CrimX Firebase instance (crimsonflame-8169e)
+// Integrates with official CrimX DoorAuth & Firebase instance (crimsonflame-8169e)
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { 
@@ -22,6 +22,9 @@ import {
   getDocs, 
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const CRIMX_CLIENT_ID = 'cf_client_843fbbf7d0caba';
+const DOORAUTH_ORIGIN = window.location.origin.includes('localhost') ? window.location.origin : 'https://crimsonflame.net';
 
 const CRIMX_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSSJKDrFJ1_qlliZqgw34CY2TSaKOxxxM",
@@ -55,18 +58,71 @@ const GAME_TITLES = {
 };
 
 // ============================================================================
-// AUTHENTICATION MANAGEMENT
+// DOORAUTH INTEGRATION (Standardized & Locked)
 // ============================================================================
 
+export function triggerCrimXDoorAuth() {
+  const popupW = 480;
+  const popupH = 620;
+  const left = Math.max(0, (window.screen.width - popupW) / 2);
+  const top = Math.max(0, (window.screen.height - popupH) / 2);
+
+  const authPopup = window.open(
+    DOORAUTH_ORIGIN + '/auth/action?type=authorize&client_id=' + encodeURIComponent(CRIMX_CLIENT_ID) + '&response_type=code&scope=identity,profile',
+    'CrimXDoorAuth',
+    'width=' + popupW + ',height=' + popupH + ',top=' + top + ',left=' + left + ',status=no,toolbar=no,menubar=no'
+  );
+
+  window.addEventListener('message', function onDoorAuthMsg(event) {
+    if (event.data && event.data.type === 'CRIMX_AUTH_SUCCESS') {
+      window.removeEventListener('message', onDoorAuthMsg);
+      console.log('[DoorAuth] Authenticated user:', event.data.user);
+      if (typeof window.onCrimXSignIn === 'function') {
+        window.onCrimXSignIn(event.data);
+      }
+    }
+  });
+}
+window.triggerCrimXDoorAuth = triggerCrimXDoorAuth;
+
+window.onCrimXSignIn = function(data) {
+  const u = (data && data.user) ? data.user : {};
+  currentCrimXUser = {
+    uid: u.uid || u.id || ('crimx_' + Date.now()),
+    displayName: u.displayName || u.name || u.username || 'CrimX Player',
+    email: u.email || '',
+    photoURL: u.photoURL || u.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
+    doorAuth: true
+  };
+
+  localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
+  updateCrimXUI(currentCrimXUser);
+  closeCrimXModal();
+  showToast(`Signed into CrimX as ${currentCrimXUser.displayName}!`, 'success');
+  loadCloudSavesList();
+  autoSyncLocalToCloud();
+};
+
+// Restore DoorAuth session from storage on init
+try {
+  const cached = localStorage.getItem('crimx_doorauth_session');
+  if (cached) {
+    currentCrimXUser = JSON.parse(cached);
+  }
+} catch (e) {}
+
+// Firebase Auth listener
 onAuthStateChanged(auth, async (user) => {
-  currentCrimXUser = user;
-  updateCrimXUI(user);
   if (user) {
+    currentCrimXUser = user;
+    localStorage.removeItem('crimx_doorauth_session');
+    updateCrimXUI(user);
     showToast(`Signed into CrimX as ${user.displayName || user.email.split('@')[0]}`, 'success');
     await loadCloudSavesList();
-    // Auto sync any pending local saves to cloud
     autoSyncLocalToCloud();
-  } else {
+  } else if (!currentCrimXUser || !currentCrimXUser.doorAuth) {
+    currentCrimXUser = null;
+    updateCrimXUI(null);
     cloudSavesCache = {};
   }
 });
@@ -77,19 +133,25 @@ function updateCrimXUI(user) {
 
   if (user) {
     const name = user.displayName || user.email.split('@')[0] || 'CrimX Player';
-    const pfp = user.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const pfp = user.photoURL || 'https://crimsonflame.net/assets/crimx-logo.png';
     container.innerHTML = `
-      <button class="cm-btn cm-btn-crimx-user" onclick="openCrimXModal()" title="CrimX Profile & Cloud Saves (${name})">
-        <img src="${pfp}" alt="${name}" class="cm-crimx-avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-        <span class="cm-crimx-name">${escapeHtml(name)}</span>
-        <span class="cm-cloud-badge" title="Cloud Save Active">☁️ Active</span>
-      </button>
+      <div id="crimx-auth-widget" style="display: inline-block;">
+        <button type="button" class="cm-btn cm-btn-crimx-user" onclick="openCrimXModal()" title="CrimX Profile & Cloud Saves (${escapeHtml(name)})">
+          <img src="${pfp}" alt="${escapeHtml(name)}" class="cm-crimx-avatar" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+          <span class="cm-crimx-name">${escapeHtml(name)}</span>
+          <span class="cm-cloud-badge" title="Cloud Save Active">☁️ Active</span>
+        </button>
+      </div>
     `;
   } else {
+    // Official CrimX DoorAuth Sign-In Widget (Standardized & Locked)
     container.innerHTML = `
-      <button class="cm-btn cm-btn-crimx" onclick="openCrimXModal()" title="Sign into CrimX to sync saves to cloud">
-        <span>🛡️</span> CrimX Sign In
-      </button>
+      <div id="crimx-auth-widget" style="display: inline-block;">
+        <button type="button" id="crimx-signin-btn" class="crimx-signin-btn" onclick="triggerCrimXDoorAuth()">
+          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+          <span id="crimx-signin-label">Sign in with CrimX</span>
+        </button>
+      </div>
     `;
   }
 }
@@ -211,7 +273,7 @@ window.addEventListener('message', async (event) => {
     if (currentCrimXUser) {
       await saveGameToCloud(gameId, savePayload);
     } else {
-      console.debug('[CrimX Bridge] Save changed locally. Sign in to CrimX to backup to cloud.');
+      console.debug('[CrimX Bridge] Save changed locally. Sign in with CrimX DoorAuth to backup to cloud.');
     }
   }
 
@@ -354,7 +416,6 @@ window.restoreSaveToBrowser = async function(gameId) {
   }
 
   showToast(`✓ Restored ${count} save files for ${save.gameTitle || gameId}! Reloading game...`, 'success');
-  // Dispatch event so any game page can reload its frame
   window.dispatchEvent(new CustomEvent('crimx-save-restored', { detail: { gameId, data } }));
 };
 
@@ -375,7 +436,7 @@ function ensureCrimXModal() {
     <div class="cm-modal-card crimx-modal-card">
       <div class="cm-modal-header">
         <div class="cm-modal-title">
-          <div class="cm-logo-box" style="font-size:0.85rem; width:26px; height:26px;">🛡️</div>
+          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" style="width:22px; height:22px;">
           <span>CrimX Account & Cloud Save</span>
         </div>
         <button class="cm-modal-close" onclick="closeCrimXModal()">✕</button>
@@ -383,8 +444,7 @@ function ensureCrimXModal() {
 
       <!-- Tab Navigation -->
       <div class="crimx-tabs">
-        <button class="crimx-tab-btn active" data-tab="login" onclick="switchCrimXTab('login')">Sign In</button>
-        <button class="crimx-tab-btn" data-tab="register" onclick="switchCrimXTab('register')">Register</button>
+        <button class="crimx-tab-btn active" data-tab="login" onclick="switchCrimXTab('login')">DoorAuth Sign In</button>
         <button class="crimx-tab-btn" data-tab="cloud" onclick="switchCrimXTab('cloud')">☁️ Cloud Saves</button>
         <button class="crimx-tab-btn" data-tab="profile" onclick="switchCrimXTab('profile')">Profile</button>
       </div>
@@ -392,8 +452,22 @@ function ensureCrimXModal() {
       <!-- TAB: Sign In -->
       <div class="crimx-tab-pane active" id="crimx-tab-login">
         <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:1rem; line-height:1.5;">
-          Sign in with your CrimX account to securely sync game progress across devices and never lose saves when clearing browser cache.
+          Sign in via official CrimX DoorAuth to securely sync your game progress to the cloud so you never lose saves when clearing browser cache.
         </p>
+
+        <!-- Official CrimX DoorAuth Button -->
+        <div style="margin-bottom: 1.25rem; text-align: center;">
+          <button type="button" class="crimx-signin-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth()">
+            <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+            <span>Sign in with CrimX DoorAuth</span>
+          </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0; color:var(--text-dim); font-size:0.78rem;">
+          <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
+          <span>OR DIRECT EMAIL LOGIN</span>
+          <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
+        </div>
 
         <form id="crimx-login-form" onsubmit="handleCrimXLogin(event)">
           <div class="cm-input-group" style="margin-bottom:0.75rem;">
@@ -405,7 +479,7 @@ function ensureCrimXModal() {
             <input type="password" id="crimx-login-password" class="cm-url-input" required placeholder="••••••••">
           </div>
           <button type="submit" class="cm-btn cm-btn-yellow" style="width:100%; justify-content:center; padding:0.75rem;">
-            Sign into CrimX
+            Sign in with Email
           </button>
         </form>
 
@@ -419,31 +493,6 @@ function ensureCrimXModal() {
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:16px; height:16px;">
           Continue with Google
         </button>
-      </div>
-
-      <!-- TAB: Register -->
-      <div class="crimx-tab-pane" id="crimx-tab-register">
-        <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:1rem; line-height:1.5;">
-          Create a free CrimX player identity for unblocked games, cloud saves, and friends list.
-        </p>
-
-        <form id="crimx-register-form" onsubmit="handleCrimXRegister(event)">
-          <div class="cm-input-group" style="margin-bottom:0.75rem;">
-            <label style="font-size:0.78rem; color:var(--text-dim); font-weight:600;">PLAYER USERNAME</label>
-            <input type="text" id="crimx-reg-name" class="cm-url-input" required placeholder="SansTheSkeleton">
-          </div>
-          <div class="cm-input-group" style="margin-bottom:0.75rem;">
-            <label style="font-size:0.78rem; color:var(--text-dim); font-weight:600;">EMAIL</label>
-            <input type="email" id="crimx-reg-email" class="cm-url-input" required placeholder="you@gmail.com">
-          </div>
-          <div class="cm-input-group" style="margin-bottom:1.25rem;">
-            <label style="font-size:0.78rem; color:var(--text-dim); font-weight:600;">PASSWORD</label>
-            <input type="password" id="crimx-reg-password" class="cm-url-input" required placeholder="At least 6 characters">
-          </div>
-          <button type="submit" class="cm-btn cm-btn-yellow" style="width:100%; justify-content:center; padding:0.75rem;">
-            Create CrimX Account
-          </button>
-        </form>
       </div>
 
       <!-- TAB: Cloud Saves -->
@@ -465,11 +514,11 @@ function ensureCrimXModal() {
       <div class="crimx-tab-pane" id="crimx-tab-profile">
         <div id="crimx-profile-details">
           <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border-subtle);">
-            <img id="crimx-prof-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width:60px; height:60px; border-radius:50%; border:2px solid var(--accent-cyan);">
+            <img id="crimx-prof-pfp" src="https://crimsonflame.net/assets/crimx-logo.png" style="width:60px; height:60px; border-radius:50%; border:2px solid var(--accent-cyan); object-fit: cover;">
             <div>
               <div id="crimx-prof-name" style="font-weight:700; font-size:1.1rem; color:#fff;">Player</div>
               <div id="crimx-prof-email" style="font-size:0.82rem; color:var(--text-dim);">player@crimsonflame.net</div>
-              <span class="cm-tile-badge" style="background:rgba(0, 240, 255, 0.2); color:var(--accent-cyan); position:static; margin-top:0.4rem; display:inline-block;">CrimX Verified</span>
+              <span class="cm-tile-badge" style="background:rgba(0, 240, 255, 0.2); color:var(--accent-cyan); position:static; margin-top:0.4rem; display:inline-block;">DoorAuth Verified</span>
             </div>
           </div>
 
@@ -508,30 +557,6 @@ window.handleCrimXLogin = async function(e) {
   }
 };
 
-window.handleCrimXRegister = async function(e) {
-  e.preventDefault();
-  const name = document.getElementById('crimx-reg-name').value.trim();
-  const email = document.getElementById('crimx-reg-email').value.trim();
-  const password = document.getElementById('crimx-reg-password').value;
-
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(cred.user, { displayName: name });
-    // Save to Firestore
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      username: name,
-      displayName: name,
-      email: email,
-      createdAt: serverTimestamp()
-    }, { merge: true });
-
-    closeCrimXModal();
-    showToast(`Welcome to CrimX, ${name}!`, 'success');
-  } catch (err) {
-    showToast(err.message.replace('Firebase: ', ''), 'error');
-  }
-};
-
 window.handleCrimXGoogleLogin = async function() {
   try {
     await signInWithPopup(auth, googleProvider);
@@ -543,7 +568,10 @@ window.handleCrimXGoogleLogin = async function() {
 
 window.handleCrimXLogout = async function() {
   try {
+    localStorage.removeItem('crimx_doorauth_session');
     await signOut(auth);
+    currentCrimXUser = null;
+    updateCrimXUI(null);
     showToast('Signed out of CrimX.', 'info');
     closeCrimXModal();
   } catch (err) {
@@ -579,7 +607,8 @@ function escapeHtml(str) {
   })[m]);
 }
 
-// Auto ensure modal is in DOM
+// Auto ensure modal is in DOM and UI is populated
 document.addEventListener('DOMContentLoaded', () => {
   ensureCrimXModal();
+  updateCrimXUI(currentCrimXUser);
 });

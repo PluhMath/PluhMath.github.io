@@ -804,6 +804,39 @@ body {
   border-color: var(--accent-cyan);
 }
 
+/* Official CrimX Ecosystem Standard: Shape, Theme, and Typography are locked */
+.crimx-signin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 18px;
+    background: #15181e;
+    color: #ffffff;
+    border: 1px solid #363b46;
+    border-radius: 8px;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.crimx-signin-btn:hover {
+    background: #1f232b;
+    border-color: #505764;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6);
+}
+.crimx-btn-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
 /* CrimX Account & Cloud Save Styles */
 .cm-btn-crimx {
   background: rgba(239, 68, 68, 0.12);
