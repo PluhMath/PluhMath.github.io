@@ -836,6 +836,14 @@ body {
     object-fit: contain;
     flex-shrink: 0;
 }
+.crimx-signin-gh-btn {
+    background: #0d131a;
+    border-color: #243040;
+}
+.crimx-signin-gh-btn:hover {
+    background: #141d28;
+    border-color: var(--accent-cyan);
+}
 
 /* CrimX Account & Cloud Save Styles */
 .cm-btn-crimx {

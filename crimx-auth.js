@@ -107,14 +107,15 @@ window.fetchCrimXUserProfile = fetchCrimXUserProfile;
 // DOORAUTH INTEGRATION (Standardized & Locked)
 // ============================================================================
 
-export function triggerCrimXDoorAuth() {
+export function triggerCrimXDoorAuth(customOrigin) {
+  const origin = customOrigin || (window.location.origin.includes('localhost') ? window.location.origin : 'https://crimsonflame.net');
   const popupW = 480;
   const popupH = 620;
   const left = Math.max(0, (window.screen.width - popupW) / 2);
   const top = Math.max(0, (window.screen.height - popupH) / 2);
 
   const authPopup = window.open(
-    DOORAUTH_ORIGIN + '/auth/action?type=authorize&client_id=' + encodeURIComponent(CRIMX_CLIENT_ID) + '&response_type=code&scope=identity,profile',
+    origin + '/auth/action?type=authorize&client_id=' + encodeURIComponent(CRIMX_CLIENT_ID) + '&response_type=code&scope=identity,profile',
     'CrimXDoorAuth',
     'width=' + popupW + ',height=' + popupH + ',top=' + top + ',left=' + left + ',status=no,toolbar=no,menubar=no'
   );
@@ -249,12 +250,16 @@ function updateCrimXUI(user) {
       </div>
     `;
   } else {
-    // Official CrimX DoorAuth Sign-In Widget (Standardized & Locked)
+    // Official CrimX DoorAuth Sign-In Widget (Standardized & Locked) + GitHub Pages Mirror
     container.innerHTML = `
-      <div id="crimx-auth-widget" style="display: inline-block;">
-        <button type="button" id="crimx-signin-btn" class="crimx-signin-btn" onclick="triggerCrimXDoorAuth()">
-          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+      <div id="crimx-auth-widget" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button type="button" id="crimx-signin-btn" class="crimx-signin-btn" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')" title="Sign in with CrimX via crimsonflame.net">
+          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
           <span id="crimx-signin-label">Sign in with CrimX</span>
+        </button>
+        <button type="button" id="crimx-signin-gh-btn" class="crimx-signin-btn crimx-signin-gh-btn" onclick="triggerCrimXDoorAuth('https://crimsonflame-official.github.io')" title="Sign in with CrimX via crimsonflame-official.github.io">
+          <img src="https://crimsonflame-official.github.io/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+          <span id="crimx-signin-gh-label">Sign in with CrimX (GH Mirror)</span>
         </button>
       </div>
     `;
@@ -632,11 +637,15 @@ function ensureCrimXModal() {
           Sign in via official CrimX DoorAuth to securely sync your game progress to the cloud so you never lose saves when clearing browser cache.
         </p>
 
-        <!-- Official CrimX DoorAuth Button -->
-        <div style="margin-bottom: 1.25rem; text-align: center;">
-          <button type="button" class="crimx-signin-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth()">
-            <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
-            <span>Sign in with CrimX DoorAuth</span>
+        <!-- Official CrimX DoorAuth Buttons -->
+        <div style="margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem;">
+          <button type="button" class="crimx-signin-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')">
+            <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
+            <span>Sign in with CrimX (crimsonflame.net)</span>
+          </button>
+          <button type="button" class="crimx-signin-btn crimx-signin-gh-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth('https://crimsonflame-official.github.io')">
+            <img src="https://crimsonflame-official.github.io/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+            <span>Sign in with CrimX (crimsonflame-official.github.io)</span>
           </button>
         </div>
 
