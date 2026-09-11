@@ -1,5 +1,5 @@
 // PluhMath - CrimX Account System & Cloud Save Synchronization Engine
-// Integrates with official CrimX DoorAuth & Firebase instance (crimsonflame-8169e)
+// Integrates with official CrimX DoorAuth & Profile API (https://crimx.crimsonflame.net)
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { 
@@ -58,6 +58,52 @@ const GAME_TITLES = {
 };
 
 // ============================================================================
+// PROFILE API INTEGRATION (https://crimx.crimsonflame.net/api/user/profile)
+// ============================================================================
+
+export async function fetchCrimXUserProfile(uid, idToken = '') {
+  if (!uid) return null;
+  try {
+    const headers = { 'Accept': 'application/json' };
+    if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+
+    const res = await fetch(`https://crimx.crimsonflame.net/api/user/profile?uid=${encodeURIComponent(uid)}`, {
+      method: 'GET',
+      headers: headers
+    });
+    if (res.ok) {
+      const profile = await res.json();
+      console.debug('[CrimX Profile API] Successfully fetched profile for:', uid, profile);
+      return profile;
+    }
+  } catch (err) {
+    console.debug('[CrimX Profile API] Fetch non-critical fallback:', err);
+  }
+
+  // Fallback to Firestore profile document
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      const d = userDoc.data();
+      return {
+        uid: uid,
+        username: d.username || d.displayName || 'Player',
+        displayName: d.displayName || d.username || 'Player',
+        email: d.email || '',
+        avatarUrl: d.avatarUrl || d.photoURL || d.pfp || '',
+        bannerUrl: d.bannerUrl || '',
+        statusBio: d.statusBio || d.bio || '',
+        badges: d.badges || ['DoorAuth Verified']
+      };
+    }
+  } catch (e) {
+    console.debug('[CrimX Profile] Firestore read error:', e);
+  }
+  return null;
+}
+window.fetchCrimXUserProfile = fetchCrimXUserProfile;
+
+// ============================================================================
 // DOORAUTH INTEGRATION (Standardized & Locked)
 // ============================================================================
 
@@ -85,20 +131,46 @@ export function triggerCrimXDoorAuth() {
 }
 window.triggerCrimXDoorAuth = triggerCrimXDoorAuth;
 
-window.onCrimXSignIn = function(data) {
+window.onCrimXSignIn = async function(data) {
   const u = (data && data.user) ? data.user : {};
+  const uid = u.uid || u.id || ('usr_' + Date.now());
+  const token = data.id_token || data.access_token || data.token || '';
+
   currentCrimXUser = {
-    uid: u.uid || u.id || ('crimx_' + Date.now()),
+    uid: uid,
+    username: u.username || u.displayName || u.name || 'CrimX Player',
     displayName: u.displayName || u.name || u.username || 'CrimX Player',
     email: u.email || '',
-    photoURL: u.photoURL || u.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
-    doorAuth: true
+    avatarUrl: u.avatarUrl || u.photoURL || u.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
+    photoURL: u.avatarUrl || u.photoURL || u.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
+    bannerUrl: u.bannerUrl || '',
+    statusBio: u.statusBio || '',
+    badges: u.badges || ['DoorAuth Verified'],
+    doorAuth: true,
+    token: token
   };
 
   localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
   updateCrimXUI(currentCrimXUser);
   closeCrimXModal();
   showToast(`Signed into CrimX as ${currentCrimXUser.displayName}!`, 'success');
+
+  // Fetch full rich social profile from CrimX Profile API
+  fetchCrimXUserProfile(uid, token).then(richProfile => {
+    if (richProfile) {
+      currentCrimXUser = { 
+        ...currentCrimXUser, 
+        ...richProfile,
+        displayName: richProfile.displayName || currentCrimXUser.displayName,
+        avatarUrl: richProfile.avatarUrl || currentCrimXUser.avatarUrl,
+        photoURL: richProfile.avatarUrl || currentCrimXUser.photoURL
+      };
+      localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
+      updateCrimXUI(currentCrimXUser);
+      populateProfileCard(currentCrimXUser);
+    }
+  });
+
   loadCloudSavesList();
   autoSyncLocalToCloud();
 };
@@ -108,16 +180,49 @@ try {
   const cached = localStorage.getItem('crimx_doorauth_session');
   if (cached) {
     currentCrimXUser = JSON.parse(cached);
+    // Background refresh profile from API
+    if (currentCrimXUser.uid) {
+      fetchCrimXUserProfile(currentCrimXUser.uid, currentCrimXUser.token).then(p => {
+        if (p) {
+          currentCrimXUser = { 
+            ...currentCrimXUser, 
+            ...p,
+            displayName: p.displayName || currentCrimXUser.displayName,
+            avatarUrl: p.avatarUrl || currentCrimXUser.avatarUrl,
+            photoURL: p.avatarUrl || currentCrimXUser.photoURL
+          };
+          localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
+          updateCrimXUI(currentCrimXUser);
+          populateProfileCard(currentCrimXUser);
+        }
+      });
+    }
   }
 } catch (e) {}
 
 // Firebase Auth listener
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    currentCrimXUser = user;
+    currentCrimXUser = {
+      uid: user.uid,
+      displayName: user.displayName || user.email.split('@')[0] || 'CrimX Player',
+      email: user.email || '',
+      avatarUrl: user.photoURL || 'https://crimsonflame.net/assets/crimx-logo.png',
+      photoURL: user.photoURL || 'https://crimsonflame.net/assets/crimx-logo.png',
+      badges: ['CrimX Verified']
+    };
     localStorage.removeItem('crimx_doorauth_session');
-    updateCrimXUI(user);
-    showToast(`Signed into CrimX as ${user.displayName || user.email.split('@')[0]}`, 'success');
+    updateCrimXUI(currentCrimXUser);
+    showToast(`Signed into CrimX as ${currentCrimXUser.displayName}`, 'success');
+
+    fetchCrimXUserProfile(user.uid).then(p => {
+      if (p) {
+        currentCrimXUser = { ...currentCrimXUser, ...p };
+        updateCrimXUI(currentCrimXUser);
+        populateProfileCard(currentCrimXUser);
+      }
+    });
+
     await loadCloudSavesList();
     autoSyncLocalToCloud();
   } else if (!currentCrimXUser || !currentCrimXUser.doorAuth) {
@@ -132,8 +237,8 @@ function updateCrimXUI(user) {
   if (!container) return;
 
   if (user) {
-    const name = user.displayName || user.email.split('@')[0] || 'CrimX Player';
-    const pfp = user.photoURL || 'https://crimsonflame.net/assets/crimx-logo.png';
+    const name = user.displayName || user.username || user.email.split('@')[0] || 'CrimX Player';
+    const pfp = user.avatarUrl || user.photoURL || user.pfp || 'https://crimsonflame.net/assets/crimx-logo.png';
     container.innerHTML = `
       <div id="crimx-auth-widget" style="display: inline-block;">
         <button type="button" class="cm-btn cm-btn-crimx-user" onclick="openCrimXModal()" title="CrimX Profile & Cloud Saves (${escapeHtml(name)})">
@@ -153,6 +258,60 @@ function updateCrimXUI(user) {
         </button>
       </div>
     `;
+  }
+}
+
+function populateProfileCard(user) {
+  if (!user) return;
+  const nameEl = document.getElementById('crimx-prof-name');
+  const handleEl = document.getElementById('crimx-prof-handle');
+  const emailEl = document.getElementById('crimx-prof-email');
+  const pfpEl = document.getElementById('crimx-prof-pfp');
+  const bannerEl = document.getElementById('crimx-prof-banner');
+  const bioEl = document.getElementById('crimx-prof-bio');
+  const badgesEl = document.getElementById('crimx-prof-badges');
+
+  const name = user.displayName || user.username || 'Player';
+  const handle = user.username ? `@${user.username}` : `@${name}`;
+  const pfp = user.avatarUrl || user.photoURL || user.pfp || 'https://crimsonflame.net/assets/crimx-logo.png';
+  const email = user.email || '';
+  const banner = user.bannerUrl || '';
+  const bio = user.statusBio || user.bio || '';
+  const badges = user.badges && user.badges.length ? user.badges : ['DoorAuth Verified'];
+
+  if (nameEl) nameEl.textContent = name;
+  if (handleEl) handleEl.textContent = handle;
+  if (emailEl) emailEl.textContent = email;
+  if (pfpEl) {
+    pfpEl.src = pfp;
+    pfpEl.onerror = () => { pfpEl.src = 'https://crimsonflame.net/assets/crimx-logo.png'; };
+  }
+  if (bannerEl) {
+    if (banner) {
+      bannerEl.style.backgroundImage = `url('${banner}')`;
+      bannerEl.style.backgroundSize = 'cover';
+      bannerEl.style.backgroundPosition = 'center';
+    } else {
+      bannerEl.style.backgroundImage = 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)';
+    }
+  }
+  if (bioEl) {
+    if (bio) {
+      bioEl.style.display = 'block';
+      bioEl.textContent = `"${bio}"`;
+    } else {
+      bioEl.style.display = 'none';
+    }
+  }
+  if (badgesEl) {
+    badgesEl.innerHTML = badges.map(b => {
+      let bClass = 'crimx-badge-default';
+      const bl = String(b).toLowerCase();
+      if (bl.includes('founder')) bClass = 'crimx-badge-founder';
+      else if (bl.includes('developer') || bl.includes('dev')) bClass = 'crimx-badge-developer';
+      else if (bl.includes('doorauth') || bl.includes('verified')) bClass = 'crimx-badge-verified';
+      return `<span class="crimx-badge-pill ${bClass}">🛡️ ${escapeHtml(b)}</span>`;
+    }).join('');
   }
 }
 
@@ -336,8 +495,26 @@ window.openCrimXModal = function() {
   if (modal) {
     modal.classList.add('active');
     if (currentCrimXUser) {
+      populateProfileCard(currentCrimXUser);
       switchTab('profile');
       renderCloudSavesListInModal();
+
+      if (currentCrimXUser.uid) {
+        fetchCrimXUserProfile(currentCrimXUser.uid, currentCrimXUser.token).then(p => {
+          if (p) {
+            currentCrimXUser = { 
+              ...currentCrimXUser, 
+              ...p,
+              displayName: p.displayName || currentCrimXUser.displayName,
+              avatarUrl: p.avatarUrl || currentCrimXUser.avatarUrl,
+              photoURL: p.avatarUrl || currentCrimXUser.photoURL
+            };
+            localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
+            updateCrimXUI(currentCrimXUser);
+            populateProfileCard(currentCrimXUser);
+          }
+        });
+      }
     } else {
       switchTab('login');
     }
@@ -436,7 +613,7 @@ function ensureCrimXModal() {
     <div class="cm-modal-card crimx-modal-card">
       <div class="cm-modal-header">
         <div class="cm-modal-title">
-          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" style="width:22px; height:22px;">
+          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" style="width:22px; height:22px; object-fit:contain;">
           <span>CrimX Account & Cloud Save</span>
         </div>
         <button class="cm-modal-close" onclick="closeCrimXModal()">✕</button>
@@ -513,20 +690,30 @@ function ensureCrimXModal() {
       <!-- TAB: Profile -->
       <div class="crimx-tab-pane" id="crimx-tab-profile">
         <div id="crimx-profile-details">
-          <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border-subtle);">
-            <img id="crimx-prof-pfp" src="https://crimsonflame.net/assets/crimx-logo.png" style="width:60px; height:60px; border-radius:50%; border:2px solid var(--accent-cyan); object-fit: cover;">
-            <div>
-              <div id="crimx-prof-name" style="font-weight:700; font-size:1.1rem; color:#fff;">Player</div>
-              <div id="crimx-prof-email" style="font-size:0.82rem; color:var(--text-dim);">player@crimsonflame.net</div>
-              <span class="cm-tile-badge" style="background:rgba(0, 240, 255, 0.2); color:var(--accent-cyan); position:static; margin-top:0.4rem; display:inline-block;">DoorAuth Verified</span>
+          <!-- Rich Profile Card with Custom Banner & Badges -->
+          <div class="crimx-prof-card">
+            <div id="crimx-prof-banner" class="crimx-prof-banner"></div>
+            <div class="crimx-prof-body">
+              <div class="crimx-prof-avatar-wrap">
+                <img id="crimx-prof-pfp" src="https://crimsonflame.net/assets/crimx-logo.png" class="crimx-prof-pfp" alt="Avatar">
+                <div id="crimx-prof-badges" class="crimx-prof-badges">
+                  <span class="crimx-badge-pill crimx-badge-verified">🛡️ DoorAuth Verified</span>
+                </div>
+              </div>
+              <div class="crimx-prof-name-group">
+                <div id="crimx-prof-name" class="crimx-prof-name">Player</div>
+                <div id="crimx-prof-handle" class="crimx-prof-handle">@player</div>
+                <div id="crimx-prof-email" class="crimx-prof-email">player@crimsonflame.net</div>
+              </div>
+              <div id="crimx-prof-bio" class="crimx-prof-bio" style="display:none;"></div>
             </div>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:0.5rem;">
-            <button class="cm-btn cm-btn-blue" style="justify-content:center;" onclick="switchCrimXTab('cloud')">
+            <button class="cm-btn cm-btn-blue" style="justify-content:center; padding:0.65rem;" onclick="switchCrimXTab('cloud')">
               ☁️ Manage Cloud Game Saves
             </button>
-            <button class="cm-btn cm-btn-panic" style="justify-content:center;" onclick="handleCrimXLogout()">
+            <button class="cm-btn cm-btn-panic" style="justify-content:center; padding:0.65rem;" onclick="handleCrimXLogout()">
               Sign Out
             </button>
           </div>
@@ -611,4 +798,7 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
   ensureCrimXModal();
   updateCrimXUI(currentCrimXUser);
+  if (currentCrimXUser) {
+    populateProfileCard(currentCrimXUser);
+  }
 });

@@ -953,6 +953,109 @@ body {
   gap: 0.4rem;
 }
 
+/* CrimX Rich Profile Card */
+.crimx-prof-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.crimx-prof-banner {
+  height: 75px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.crimx-prof-body {
+  padding: 0 1rem 1rem 1rem;
+  position: relative;
+}
+.crimx-prof-avatar-wrap {
+  margin-top: -32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.6rem;
+}
+.crimx-prof-pfp {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-cyan);
+  object-fit: cover;
+  background: #08090d;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+.crimx-prof-name-group {
+  margin-bottom: 0.6rem;
+}
+.crimx-prof-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.crimx-prof-handle {
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+  font-weight: 500;
+}
+.crimx-prof-email {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 0.15rem;
+}
+.crimx-prof-bio {
+  font-size: 0.82rem;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--accent-cyan);
+  padding: 0.4rem 0.6rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 0.6rem 0;
+  line-height: 1.4;
+}
+.crimx-prof-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.crimx-badge-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.crimx-badge-founder {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+.crimx-badge-developer {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+}
+.crimx-badge-verified {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.crimx-badge-default {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
 /* Toast System */
 .cm-toast-container {
   position: fixed;
