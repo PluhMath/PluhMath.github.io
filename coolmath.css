@@ -1179,3 +1179,220 @@ body {
     height: 340px;
   }
 }
+
+/* ==========================================================================
+   PLUHCODE & PLUHHAX SAVE EDITOR STYLES
+   ========================================================================== */
+.pluhcode-modal-card {
+  max-width: 520px;
+  background: #101217;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(0, 240, 255, 0.08);
+}
+
+.pluhcode-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 0.65rem 1rem;
+  font-family: monospace, sans-serif;
+  font-size: 0.95rem;
+  transition: var(--transition-fast);
+}
+
+.pluhcode-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.pluhcode-shake {
+  animation: pluhShake 0.4s ease-in-out;
+}
+
+@keyframes pluhShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+@keyframes pluhToastFade {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pluhcode-unlocked-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.pluhcode-perk-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  transition: var(--transition-fast);
+}
+
+.pluhcode-perk-card.active-perk {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.pluhcode-perk-card.unlocked-perk {
+  border-color: rgba(0, 240, 255, 0.4);
+  background: rgba(0, 240, 255, 0.06);
+}
+
+/* PluhHax Save Editor Modal */
+.pluhhax-modal-card {
+  max-width: 860px;
+  width: 95vw;
+  background: #0b0d13;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 40px rgba(0, 240, 255, 0.15);
+}
+
+.pluhhax-select {
+  background: #151822;
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.pluhhax-select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+}
+
+.pluhhax-preset-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.pluhhax-preset-btn:hover {
+  background: var(--accent-cyan);
+  color: #000;
+  border-color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+/* Save File Text Editor Styles */
+.pluh-text-editor-container {
+  display: flex;
+  height: 360px;
+  background: #07090e;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.pluh-line-numbers {
+  width: 50px;
+  padding: 10px 8px;
+  background: #0d1017;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: right;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  user-select: none;
+  border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.pluh-code-textarea {
+  flex: 1;
+  background: transparent;
+  color: #e2e8f0;
+  padding: 10px 14px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.pluh-code-textarea::selection {
+  background: rgba(0, 240, 255, 0.25);
+  color: #fff;
+}
+
+.pluh-editor-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 10px;
+}
+
+.pluh-tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px 6px 0 0;
+  font-size: 0.8rem;
+  font-family: monospace;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.pluh-tab-btn.active {
+  background: #151822;
+  color: var(--accent-cyan);
+  border-color: rgba(0, 240, 255, 0.4);
+  font-weight: 700;
+}
+
+.pluh-guide-drawer {
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 1px solid var(--border-subtle);
+  width: 220px;
+  padding: 10px;
+  font-size: 0.78rem;
+  overflow-y: auto;
+  color: var(--text-muted);
+}
+
+.pluh-guide-item {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pluh-guide-item span {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+

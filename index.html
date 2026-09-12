@@ -53,6 +53,9 @@
     <!-- Actions -->
     <div class="cm-header-actions">
       <div id="crimx-auth-slot"></div>
+      <button class="cm-btn cm-btn-blue" id="pluhcode-nav-btn" onclick="openPluhCodeModal()" title="Enter secret codes to unlock perks and hacking tools">
+        <span>🔑</span> PluhCode
+      </button>
       <button class="cm-btn cm-btn-blue" onclick="openPMSModal()" title="Export or Import all games using portable .PMS save file">
         <span>💾</span> .PMS Saves
       </button>
@@ -119,7 +122,7 @@
     <section id="all-games-section">
       <div class="cm-section-header">
         <h2 class="cm-section-title" id="all-games-title">All Unblocked Games</h2>
-        <span style="font-size:0.85rem; color:var(--text-dim);" id="game-count-label">7 Games</span>
+        <span style="font-size:0.85rem; color:var(--text-dim);" id="game-count-label">9 Games</span>
       </div>
       <div class="cm-games-grid" id="all-games-grid">
         <!-- Rendered by JS -->
@@ -242,5 +245,6 @@
   </script>
   <script type="module" src="crimx-auth.js"></script>
   <script src="pms-save-system.js"></script>
+  <script src="pluhcode.js"></script>
 </body>
 </html>

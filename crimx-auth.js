@@ -54,7 +54,11 @@ const GAME_TITLES = {
   'pluhshooter': 'PluhShooter.io',
   'pluhus': 'PluhUs',
   'geometry-dash': 'Geometry Dash Subzero',
-  'drift-boss': 'Drift Boss'
+  'drift-boss': 'Drift Boss',
+  'undertale-yellow': 'Undertale Yellow',
+  'uty': 'Undertale Yellow',
+  'tiny-fishing': 'Tiny Fishing',
+  'tinyfishing': 'Tiny Fishing'
 };
 
 // ============================================================================
@@ -115,7 +119,7 @@ export function triggerCrimXDoorAuth(customOrigin) {
   const top = Math.max(0, (window.screen.height - popupH) / 2);
 
   const authPopup = window.open(
-    origin + '/auth/action?type=authorize&client_id=' + encodeURIComponent(CRIMX_CLIENT_ID) + '&response_type=code&scope=identity,profile',
+    origin + '/auth/action?type=authorize&client_id=' + encodeURIComponent(CRIMX_CLIENT_ID) + '&app_name=PluhMath&response_type=code&scope=identity,profile',
     'CrimXDoorAuth',
     'width=' + popupW + ',height=' + popupH + ',top=' + top + ',left=' + left + ',status=no,toolbar=no,menubar=no'
   );
@@ -325,7 +329,7 @@ function populateProfileCard(user) {
 // ============================================================================
 
 /**
- * Save game state to Firestore under users/{uid}/game_saves/{gameId}
+ * Save game state to Firestore under users/{uid}/connected_apps/pluhmath/saves/{gameId}
  */
 export async function saveGameToCloud(gameId, data, gameTitle = '') {
   if (!currentCrimXUser) {
@@ -337,7 +341,6 @@ export async function saveGameToCloud(gameId, data, gameTitle = '') {
   const title = gameTitle || GAME_TITLES[cleanGameId] || cleanGameId;
 
   try {
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId);
     const payload = {
       gameId: cleanGameId,
       gameTitle: title,
@@ -347,10 +350,23 @@ export async function saveGameToCloud(gameId, data, gameTitle = '') {
       updatedAtIso: new Date().toISOString()
     };
 
+    // 1. Ensure connected_apps/pluhmath parent doc exists in CrimX
+    const appRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath');
+    await setDoc(appRef, {
+      appName: 'PluhMath',
+      appId: 'pluhmath',
+      clientId: CRIMX_CLIENT_ID,
+      lastActive: serverTimestamp(),
+      updatedAtIso: new Date().toISOString()
+    }, { merge: true });
+
+    // 2. Save game save doc in users/{uid}/connected_apps/pluhmath/saves/{cleanGameId}
+    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
     await setDoc(saveRef, payload, { merge: true });
+
     cloudSavesCache[cleanGameId] = payload;
     showToast(`☁️ Cloud Save synced for ${title}!`, 'success');
-    console.debug(`[CrimX Cloud Save] Successfully saved ${cleanGameId} to cloud.`);
+    console.debug(`[CrimX Cloud Save] Successfully saved ${cleanGameId} to cloud under connected_apps/pluhmath.`);
     return true;
   } catch (err) {
     console.error('[CrimX Cloud Save] Failed to save to Firestore:', err);
@@ -367,9 +383,20 @@ export async function loadGameFromCloud(gameId) {
   const cleanGameId = String(gameId).toLowerCase().trim();
 
   try {
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId);
-    const snap = await getDoc(saveRef);
-    if (snap.exists()) {
+    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
+    let snap = await getDoc(saveRef);
+
+    // Fallback: check legacy path if present
+    if (!snap.exists()) {
+      const legacyRef = doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId);
+      const legacySnap = await getDoc(legacyRef);
+      if (legacySnap.exists()) {
+        snap = legacySnap;
+        await saveGameToCloud(cleanGameId, legacySnap.data().data, legacySnap.data().gameTitle);
+      }
+    }
+
+    if (snap && snap.exists()) {
       const data = snap.data();
       cloudSavesCache[cleanGameId] = data;
       return data;
@@ -388,7 +415,7 @@ export async function loadCloudSavesList() {
   if (!currentCrimXUser) return [];
 
   try {
-    const savesColl = collection(db, 'users', currentCrimXUser.uid, 'game_saves');
+    const savesColl = collection(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves');
     const snap = await getDocs(savesColl);
     const list = [];
     snap.forEach(docSnap => {
@@ -396,6 +423,19 @@ export async function loadCloudSavesList() {
       list.push(d);
       cloudSavesCache[d.gameId] = d;
     });
+
+    if (list.length === 0) {
+      try {
+        const legacyColl = collection(db, 'users', currentCrimXUser.uid, 'game_saves');
+        const legSnap = await getDocs(legacyColl);
+        legSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          list.push(d);
+          cloudSavesCache[d.gameId] = d;
+        });
+      } catch (e) {}
+    }
+
     return list;
   } catch (err) {
     console.error('[CrimX Cloud Save] Failed to list saves:', err);
@@ -410,8 +450,11 @@ export async function deleteGameCloudSave(gameId) {
   if (!currentCrimXUser) return;
   const cleanGameId = String(gameId).toLowerCase().trim();
   try {
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId);
+    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
     await deleteDoc(saveRef);
+    try {
+      await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId));
+    } catch (e) {}
     delete cloudSavesCache[cleanGameId];
     showToast(`Deleted cloud save for ${GAME_TITLES[cleanGameId] || cleanGameId}`, 'info');
     renderCloudSavesListInModal();

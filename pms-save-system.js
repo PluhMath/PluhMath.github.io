@@ -47,6 +47,18 @@
       filename: 'drift-boss.pms',
       prefixes: ['driftboss', 'c2drift'],
       matcher: (k) => k.toLowerCase().includes('drift')
+    },
+    'undertale-yellow': {
+      title: 'Undertale Yellow',
+      filename: 'undertale-yellow.pms',
+      prefixes: ['uty', 'undertale_yellow'],
+      matcher: (k) => k.startsWith('uty') || k.toLowerCase().includes('yellow')
+    },
+    'tiny-fishing': {
+      title: 'Tiny Fishing',
+      filename: 'tiny-fishing.pms',
+      prefixes: ['tiny_fishing', 'tinyfishing'],
+      matcher: (k) => k.toLowerCase().includes('fish') || k.toLowerCase().includes('tiny')
     }
   };
 

@@ -184,6 +184,55 @@ const GAMES_DB = [
     badgeColor: 'rgba(16, 185, 129, 0.85)',
     thumbnail: 'https://738501629-461082748261058427.preview.editmysite.com/uploads/b/139890129-817510652323129407/files/media/graphics/splash/mobile/cover-start.jpg',
     bgGradient: 'linear-gradient(135deg, #14110b, #241f14)'
+  },
+  {
+    id: 'undertale-yellow',
+    slug: 'undertale-yellow',
+    url: 'undertale-yellow.html',
+    title: 'Undertale Yellow',
+    category: 'RPG & Story',
+    categorySlug: 'rpg',
+    categories: ['rpg', 'arcade', 'skill'],
+    rating: '5.0',
+    plays: '490K',
+    tags: ['RPG', 'Undertale', 'Undertale Yellow', 'Clover', 'Story', 'Bullet Hell', 'Prequel'],
+    desc: 'The acclaimed fan-made Undertale prequel. Guide Clover, the seventh human with the Justice soul, through the Underground with revolver attacks and rich new characters.',
+    howToPlay: 'Control your yellow heart soul to dodge attacks. Use your revolver in combat by timing target rings for critical strikes. Choose Pacifist, Neutral, or No Mercy paths!',
+    controls: [
+      { key: 'Arrow Keys', desc: 'Move / Dodge heart soul' },
+      { key: 'Z / Enter', desc: 'Confirm / Shoot revolver' },
+      { key: 'X / Shift', desc: 'Cancel / Run' },
+      { key: 'C / Ctrl', desc: 'Menu / Inventory' }
+    ],
+    gamePath: 'games/Undertale Yellow/index.html',
+    icon: '💛',
+    badge: 'JUSTICE SOUL',
+    badgeColor: 'rgba(234, 179, 8, 0.95)',
+    thumbnail: 'games/Undertale Yellow/favicon.png',
+    bgGradient: 'linear-gradient(135deg, #1e1908, #362c0b)'
+  },
+  {
+    id: 'tiny-fishing',
+    slug: 'tiny-fishing',
+    url: 'tiny-fishing.html',
+    title: 'Tiny Fishing',
+    category: 'Skill & Strategy',
+    categorySlug: 'skill',
+    categories: ['skill', 'arcade', 'strategy'],
+    rating: '4.8',
+    plays: '310K',
+    tags: ['Fishing', 'Casual', 'Upgrade', 'Idle', 'High Score', 'Relaxing'],
+    desc: 'Cast your line, hook rare and legendary fish, and reel them up to earn cash. Upgrade your fishing pole depth, max catch capacity, and passive offline income!',
+    howToPlay: 'Click or tap to cast your line. Drag your hook across the water to catch as many high-value fish as possible on the way back up. Reinvest cash into deeper upgrades!',
+    controls: [
+      { key: 'Mouse / Touch', desc: 'Click to cast, drag to steer hook & catch fish' }
+    ],
+    gamePath: 'games/Tiny Fishing/index.html',
+    icon: '🎣',
+    badge: 'CASUAL HIT',
+    badgeColor: 'rgba(6, 182, 212, 0.9)',
+    thumbnail: 'games/Tiny Fishing/res/images/startbg.jpg',
+    bgGradient: 'linear-gradient(135deg, #071926, #0e3046)'
   }
 ];
 
