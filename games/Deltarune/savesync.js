@@ -613,9 +613,7 @@
                 if (event.data.allLocalStorageData) {
                     log('Restoring save data from WigdosXP:', Object.keys(event.data.allLocalStorageData).length, 'items');
                     
-                    // Clear and restore localStorage
-                    localStorage.clear();
-                    
+                    // Safely update localStorage without clearing existing unrelated keys
                     Object.keys(event.data.allLocalStorageData).forEach(key => {
                         localStorage.setItem(key, event.data.allLocalStorageData[key]);
                     });

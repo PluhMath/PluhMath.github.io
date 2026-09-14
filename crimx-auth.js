@@ -8,7 +8,8 @@ import {
   createUserWithEmailAndPassword, 
   onAuthStateChanged, 
   signOut, 
-  GoogleAuthProvider, 
+  GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup, 
   updateProfile 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -28,9 +29,9 @@ const DOORAUTH_ORIGIN = window.location.origin.includes('localhost') ? window.lo
 
 const CRIMX_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSSJKDrFJ1_qlliZqgw34CY2TSaKOxxxM",
-  authDomain: "crimsonflame-8169e.firebaseapp.com",
-  projectId: "crimsonflame-8169e",
-  storageBucket: "crimsonflame-8169e.firebasestorage.app",
+  authDomain: "plumath.firebaseapp.com",
+  projectId: "plumath",
+  storageBucket: "plumath.firebasestorage.app",
   messagingSenderId: "406321213530",
   appId: "1:406321213530:web:92d27a69d34d147393a863"
 };
@@ -40,25 +41,29 @@ const app = getApps().length > 0 ? getApp() : initializeApp(CRIMX_FIREBASE_CONFI
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+const microsoftProvider = new OAuthProvider('microsoft.com');
 
 let currentCrimXUser = null;
 let cloudSavesCache = {};
 
-// Known game mappings for nice titles
+// Clean full game titles (Never abbreviations like UT or DT)
 const GAME_TITLES = {
-  'ut': 'Undertale',
   'undertale': 'Undertale',
-  'dr': 'Deltarune',
+  'ut': 'Undertale',
   'deltarune': 'Deltarune',
+  'dr': 'Deltarune',
   'run3': 'Run 3',
+  'run-3': 'Run 3',
   'pluhshooter': 'PluhShooter.io',
+  'pluhshooter-io': 'PluhShooter.io',
   'pluhus': 'PluhUs',
   'geometry-dash': 'Geometry Dash Subzero',
   'drift-boss': 'Drift Boss',
   'undertale-yellow': 'Undertale Yellow',
   'uty': 'Undertale Yellow',
   'tiny-fishing': 'Tiny Fishing',
-  'tinyfishing': 'Tiny Fishing'
+  'tinyfishing': 'Tiny Fishing',
+  'restrictia': 'The Chronicles of Restrictia'
 };
 
 // ============================================================================
@@ -176,8 +181,10 @@ window.onCrimXSignIn = async function(data) {
     }
   });
 
-  loadCloudSavesList();
-  autoSyncLocalToCloud();
+  loadCloudSavesList().then(() => {
+    autoRestoreCloudSaves();
+    autoSyncLocalToCloud();
+  });
 };
 
 // Restore DoorAuth session from storage on init
@@ -201,6 +208,7 @@ try {
           populateProfileCard(currentCrimXUser);
         }
       });
+      loadCloudSavesList().then(() => autoRestoreCloudSaves());
     }
   }
 } catch (e) {}
@@ -229,12 +237,79 @@ onAuthStateChanged(auth, async (user) => {
     });
 
     await loadCloudSavesList();
+    await autoRestoreCloudSaves();
     autoSyncLocalToCloud();
+
+    // Start Dynamic Rich Game Presence across the CrimX ecosystem!
+    startGamePresence(user.uid);
   } else if (!currentCrimXUser || !currentCrimXUser.doorAuth) {
+    stopGamePresence();
     currentCrimXUser = null;
     updateCrimXUI(null);
     cloudSavesCache = {};
   }
+});
+
+// ============================================================================
+// DYNAMIC RICH GAME PRESENCE ENGINE (CrimX Presence Integration)
+// Broadcasts 'Playing [GameTitle]' to friends list on CrimX with auto-cleanup
+// ============================================================================
+let gamePresenceHeartbeat = null;
+
+async function startGamePresence(uid) {
+  if (!uid) return;
+  const gameId = getCurrentPageGameId();
+  const gameTitle = (gameId && GAME_TITLES[gameId]) ? GAME_TITLES[gameId] : 'PluhMath';
+
+  const presencePayload = {
+    online: true,
+    currentGame: {
+      title: gameTitle,
+      details: 'In Game',
+      clientId: CRIMX_CLIENT_ID,
+      startedAt: Date.now()
+    },
+    lastActive: serverTimestamp()
+  };
+
+  try {
+    await setDoc(doc(db, 'users', uid), presencePayload, { merge: true });
+    console.debug(`[CrimX Presence] Dynamic Rich Presence active: Playing ${gameTitle}`);
+  } catch (err) {
+    console.warn('[CrimX Presence] Initial presence update error:', err);
+  }
+
+  // Heartbeat every 45 seconds
+  if (gamePresenceHeartbeat) clearInterval(gamePresenceHeartbeat);
+  gamePresenceHeartbeat = setInterval(async () => {
+    if (currentCrimXUser && currentCrimXUser.uid && document.visibilityState === 'visible') {
+      try {
+        await setDoc(doc(db, 'users', currentCrimXUser.uid), {
+          online: true,
+          lastActive: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {}
+    }
+  }, 45000);
+}
+
+async function stopGamePresence() {
+  if (gamePresenceHeartbeat) {
+    clearInterval(gamePresenceHeartbeat);
+    gamePresenceHeartbeat = null;
+  }
+  if (currentCrimXUser && currentCrimXUser.uid) {
+    try {
+      await setDoc(doc(db, 'users', currentCrimXUser.uid), {
+        currentGame: null,
+        lastActive: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {}
+  }
+}
+
+window.addEventListener('beforeunload', () => {
+  stopGamePresence();
 });
 
 function updateCrimXUI(user) {
@@ -328,29 +403,107 @@ function populateProfileCard(user) {
 // CLOUD SAVE SYSTEM (Cross-device, survives cache clears)
 // ============================================================================
 
+function getOfflineSaveQueue() {
+  try {
+    const raw = localStorage.getItem('pluh_pending_cloud_uploads');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function queueOfflineSave(gameId, payload) {
+  try {
+    const queue = getOfflineSaveQueue();
+    queue[gameId] = payload;
+    localStorage.setItem('pluh_pending_cloud_uploads', JSON.stringify(queue));
+  } catch (e) {}
+}
+
+async function flushPendingCloudUploads() {
+  if (!navigator.onLine || !currentCrimXUser) return;
+  const queue = getOfflineSaveQueue();
+  const gameIds = Object.keys(queue);
+  if (gameIds.length === 0) return;
+
+  console.debug('[PluhCloud] Connection restored, uploading pending saves:', gameIds);
+  let uploaded = 0;
+  for (const gId of gameIds) {
+    const payload = queue[gId];
+    try {
+      const appRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath');
+      await setDoc(appRef, {
+        appName: 'PluhMath',
+        appId: 'pluhmath',
+        clientId: CRIMX_CLIENT_ID,
+        lastActive: serverTimestamp(),
+        updatedAtIso: new Date().toISOString()
+      }, { merge: true });
+
+      const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', gId);
+      await setDoc(saveRef, { ...payload, lastUpdated: serverTimestamp() }, { merge: true });
+      delete queue[gId];
+      uploaded++;
+    } catch (err) {
+      console.warn('[PluhCloud] Error flushing save for', gId, err);
+      break;
+    }
+  }
+
+  localStorage.setItem('pluh_pending_cloud_uploads', JSON.stringify(queue));
+  if (uploaded > 0) {
+    showToast(`Internet connection restored. ${uploaded} save${uploaded === 1 ? '' : 's'} successfully backed up!`, 'success');
+  }
+}
+
+window.addEventListener('online', flushPendingCloudUploads);
+
 /**
- * Save game state to Firestore under users/{uid}/connected_apps/pluhmath/saves/{gameId}
+ * Save game state to cloud under users/{uid}/connected_apps/pluhmath/saves/{gameId}
  */
-export async function saveGameToCloud(gameId, data, gameTitle = '') {
-  if (!currentCrimXUser) {
-    console.debug('[CrimX] No user signed in. Cloud save skipped (local only).');
+export async function saveGameToCloud(gameId, data, gameTitle = '', indexedDBData = null) {
+  const cleanGameId = String(gameId).toLowerCase().trim();
+  const title = gameTitle || GAME_TITLES[cleanGameId] || cleanGameId;
+
+  // 1. Always persist to local cache immediately
+  if (data && typeof data === 'object') {
+    for (const [k, v] of Object.entries(data)) {
+      if (!k.startsWith('__bridge_') && typeof v !== 'object') {
+        localStorage.setItem(k, String(v));
+      }
+    }
+  }
+
+  // 2. Offline check
+  if (!navigator.onLine) {
+    showToast('Error: Unable to save. Saving when internet connection is restored', 'error');
+    queueOfflineSave(cleanGameId, {
+      gameId: cleanGameId,
+      gameTitle: title,
+      data: data,
+      indexedDB: indexedDBData,
+      itemCount: typeof data === 'object' ? Object.keys(data).length : 1,
+      updatedAtIso: new Date().toISOString()
+    });
     return false;
   }
 
-  const cleanGameId = String(gameId).toLowerCase().trim();
-  const title = gameTitle || GAME_TITLES[cleanGameId] || cleanGameId;
+  if (!currentCrimXUser) {
+    console.debug('[CrimX] No user signed in. Saved to local cache only.');
+    return false;
+  }
 
   try {
     const payload = {
       gameId: cleanGameId,
       gameTitle: title,
       data: data,
+      indexedDB: indexedDBData,
       itemCount: typeof data === 'object' ? Object.keys(data).length : 1,
       lastUpdated: serverTimestamp(),
       updatedAtIso: new Date().toISOString()
     };
 
-    // 1. Ensure connected_apps/pluhmath parent doc exists in CrimX
     const appRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath');
     await setDoc(appRef, {
       appName: 'PluhMath',
@@ -360,23 +513,29 @@ export async function saveGameToCloud(gameId, data, gameTitle = '') {
       updatedAtIso: new Date().toISOString()
     }, { merge: true });
 
-    // 2. Save game save doc in users/{uid}/connected_apps/pluhmath/saves/{cleanGameId}
     const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
     await setDoc(saveRef, payload, { merge: true });
 
     cloudSavesCache[cleanGameId] = payload;
     showToast(`☁️ Cloud Save synced for ${title}!`, 'success');
-    console.debug(`[CrimX Cloud Save] Successfully saved ${cleanGameId} to cloud under connected_apps/pluhmath.`);
     return true;
   } catch (err) {
-    console.error('[CrimX Cloud Save] Failed to save to Firestore:', err);
-    showToast(`Failed to backup ${title} to cloud`, 'error');
+    console.error('[CrimX Cloud Save] Failed to save to cloud:', err);
+    showToast('Error: Unable to save. Saving when internet connection is restored', 'error');
+    queueOfflineSave(cleanGameId, {
+      gameId: cleanGameId,
+      gameTitle: title,
+      data: data,
+      indexedDB: indexedDBData,
+      itemCount: typeof data === 'object' ? Object.keys(data).length : 1,
+      updatedAtIso: new Date().toISOString()
+    });
     return false;
   }
 }
 
 /**
- * Retrieve game state from Firestore
+ * Retrieve game state from cloud
  */
 export async function loadGameFromCloud(gameId) {
   if (!currentCrimXUser) return null;
@@ -464,6 +623,117 @@ export async function deleteGameCloudSave(gameId) {
 }
 
 // ============================================================================
+// AUTOMATIC CLOUD SAVE RESTORATION (ZERO MANUAL EFFORT)
+// Saves restore automatically into localStorage and game iframes on load and login.
+// ============================================================================
+
+function getCurrentPageGameId() {
+  const bodyAttr = document.body.getAttribute('data-game-id');
+  if (bodyAttr) return bodyAttr.toLowerCase().trim();
+  const path = window.location.pathname.toLowerCase();
+  for (const id of Object.keys(GAME_TITLES)) {
+    if (path.includes(id)) return id;
+  }
+  const idParam = new URLSearchParams(window.location.search).get('id');
+  if (idParam) return idParam.toLowerCase().trim();
+  return null;
+}
+
+function isMatchingGame(id1, id2) {
+  if (!id1 || !id2) return false;
+  const a = id1.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const b = id2.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (a === b) return true;
+  if ((a === 'ut' || a === 'undertale') && (b === 'ut' || b === 'undertale')) return true;
+  if ((a === 'dr' || a === 'deltarune') && (b === 'dr' || b === 'deltarune')) return true;
+  if ((a === 'uty' || a === 'undertaleyellow') && (b === 'uty' || b === 'undertaleyellow')) return true;
+  return false;
+}
+
+function injectRestoredSaveToGame(gameId, data) {
+  const iframe = document.getElementById('game-iframe');
+  if (!iframe || !iframe.contentWindow) return;
+
+  try {
+    iframe.contentWindow.postMessage({
+      type: 'initialSaveDataResponse',
+      messageId: 'auto_restore_' + Date.now(),
+      allLocalStorageData: data
+    }, '*');
+    iframe.contentWindow.postMessage({
+      type: 'saveDataChanged',
+      gameId: gameId,
+      allLocalStorageData: data
+    }, '*');
+
+    // Reload iframe smoothly if it started before cloud data arrived
+    if (!iframe.dataset.cloudRestored) {
+      iframe.dataset.cloudRestored = 'true';
+      const curSrc = iframe.src;
+      iframe.src = 'about:blank';
+      setTimeout(() => { iframe.src = curSrc; }, 80);
+    }
+  } catch (e) {
+    console.debug('[CrimX Auto-Restore] Iframe injection warning:', e);
+  }
+}
+
+/**
+ * Automatically restores all cloud saves into browser localStorage and active game iframes.
+ * Completely automatic: no need to click 'Restore' manually!
+ */
+export async function autoRestoreCloudSaves() {
+  if (!currentCrimXUser) return;
+
+  try {
+    const savesList = await loadCloudSavesList();
+    if (!savesList || savesList.length === 0) return;
+
+    const pageGame = getCurrentPageGameId();
+    let restoredCount = 0;
+
+    for (const saveDoc of savesList) {
+      const gameId = saveDoc.gameId;
+      const data = saveDoc.data;
+      if (!data || typeof data !== 'object') continue;
+
+      let gameRestored = false;
+
+      // Automatically populate each key into localStorage
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith('__bridge_')) {
+          const strVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          const currentLocal = localStorage.getItem(k);
+          if (currentLocal === null || currentLocal === undefined || currentLocal === '') {
+            localStorage.setItem(k, strVal);
+            gameRestored = true;
+          } else if (currentLocal !== strVal) {
+            localStorage.setItem(k, strVal);
+            gameRestored = true;
+          }
+        }
+      }
+
+      if (gameRestored) {
+        restoredCount++;
+        console.log(`[CrimX Auto-Restore] ✓ Automatically restored ${saveDoc.gameTitle || gameId}`);
+
+        // If user is playing this game right now, inject into the live game iframe!
+        if (pageGame && (pageGame === gameId || isMatchingGame(pageGame, gameId))) {
+          injectRestoredSaveToGame(gameId, data);
+        }
+      }
+    }
+
+    if (restoredCount > 0) {
+      showToast(`☁️ Automatically restored your save data from CrimX Cloud!`, 'success');
+    }
+  } catch (err) {
+    console.error('[CrimX Auto-Restore] Error during auto-restore:', err);
+  }
+}
+
+// ============================================================================
 // IFRAME POSTMESSAGE BRIDGE (Direct hook for Undertale & Deltarune savesync.js)
 // ============================================================================
 
@@ -476,6 +746,13 @@ window.addEventListener('message', async (event) => {
     const gameId = (data.gameId || 'ut').toLowerCase();
     const savePayload = data.allLocalStorageData || {};
     console.debug('[CrimX Bridge] Received saveDataChanged from game:', gameId, savePayload);
+
+    // Save locally
+    for (const [k, v] of Object.entries(savePayload)) {
+      if (!k.startsWith('__bridge_')) {
+        localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+      }
+    }
 
     if (currentCrimXUser) {
       await saveGameToCloud(gameId, savePayload);
@@ -495,7 +772,24 @@ window.addEventListener('message', async (event) => {
       const cloudSave = await loadGameFromCloud(gameId);
       if (cloudSave && cloudSave.data) {
         saveToReturn = cloudSave.data;
-        showToast(`Restoring ${GAME_TITLES[gameId] || gameId} progress from CrimX Cloud...`, 'info');
+        // Automatically write cloud save keys into localStorage so they survive offline play
+        for (const [k, v] of Object.entries(saveToReturn)) {
+          if (!k.startsWith('__bridge_')) {
+            localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+          }
+        }
+        showToast(`☁️ Automatically restored ${GAME_TITLES[gameId] || gameId} save from cloud!`, 'success');
+      }
+    }
+
+    // Fallback: If no cloud save found or not signed in, check existing localStorage
+    if (!saveToReturn) {
+      saveToReturn = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith(gameId) || k.startsWith('ut') || k.startsWith('dr') || k.startsWith('file'))) {
+          saveToReturn[k] = localStorage.getItem(k);
+        }
       }
     }
 
@@ -506,7 +800,7 @@ window.addEventListener('message', async (event) => {
         messageId: messageId,
         allLocalStorageData: saveToReturn || {}
       }, '*');
-      console.debug('[CrimX Bridge] Dispatched initialSaveDataResponse to iframe:', saveToReturn ? 'Cloud Data Found' : 'Empty');
+      console.debug('[CrimX Bridge] Dispatched initialSaveDataResponse to iframe:', saveToReturn ? 'Data Transferred' : 'Empty');
     }
   }
 });
@@ -518,11 +812,13 @@ function autoSyncLocalToCloud() {
   // Undertale / Deltarune prefix keys in localStorage
   const utKeys = {};
   const drKeys = {};
+  const utyKeys = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (!key) continue;
-    if (key.startsWith('ut')) utKeys[key] = localStorage.getItem(key);
+    if (key.startsWith('ut') && !key.startsWith('uty')) utKeys[key] = localStorage.getItem(key);
     if (key.startsWith('dr')) drKeys[key] = localStorage.getItem(key);
+    if (key.startsWith('uty') || key.includes('yellow')) utyKeys[key] = localStorage.getItem(key);
   }
 
   if (Object.keys(utKeys).length > 0 && !cloudSavesCache['ut']) {
@@ -530,6 +826,9 @@ function autoSyncLocalToCloud() {
   }
   if (Object.keys(drKeys).length > 0 && !cloudSavesCache['dr']) {
     saveGameToCloud('dr', drKeys, 'Deltarune');
+  }
+  if (Object.keys(utyKeys).length > 0 && !cloudSavesCache['undertale-yellow']) {
+    saveGameToCloud('undertale-yellow', utyKeys, 'Undertale Yellow');
   }
 }
 
@@ -594,13 +893,28 @@ async function renderCloudSavesListInModal() {
     container.innerHTML = `
       <div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); border:1px dashed var(--border-subtle);">
         <p style="margin-bottom:0.4rem; color:#fff; font-weight:600;">No Cloud Saves Found</p>
-        <p style="font-size:0.82rem; margin:0;">Play Undertale, Deltarune, or any game while signed in. Your saves automatically upload to CrimX Cloud!</p>
+        <p style="font-size:0.82rem; margin:0;">Play Undertale, Deltarune, or any game while signed in. Your saves automatically backup to the cloud!</p>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = saves.map(s => {
+  container.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; padding:0.6rem 0.8rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+      <div>
+        <div style="font-weight:700; color:#fff; font-size:0.92rem;">Active Cloud Backups</div>
+        <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Dedicated saves per game • Protected against cache clearing</div>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="restoreAllCloudSaves()" title="Restore all game saves at once">
+          📥 Restore All
+        </button>
+        <button class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all current local saves">
+          ☁️ Backup All
+        </button>
+      </div>
+    </div>
+  ` + saves.map(s => {
     const title = s.gameTitle || GAME_TITLES[s.gameId] || s.gameId;
     const dateStr = s.updatedAtIso ? new Date(s.updatedAtIso).toLocaleString() : 'Recently';
     const items = s.itemCount ? `${s.itemCount} files` : 'Save Data';
@@ -624,31 +938,95 @@ async function renderCloudSavesListInModal() {
   }).join('');
 }
 
+window.restoreAllCloudSaves = async function() {
+  if (!currentCrimXUser) {
+    showToast('Please sign in to restore cloud saves.', 'error');
+    return;
+  }
+  showToast('Restoring all game saves from cloud...', 'info');
+  const saves = await loadCloudSavesList();
+  if (!saves || saves.length === 0) {
+    showToast('No cloud saves found on your account.', 'info');
+    return;
+  }
+
+  let count = 0;
+  for (const s of saves) {
+    const gId = s.gameId;
+    if (window.PluhSaveBridge) {
+      await window.PluhSaveBridge.restoreAllSaveDataForGame(gId, s);
+    } else {
+      if (s.data && typeof s.data === 'object') {
+        Object.keys(s.data).forEach(k => localStorage.setItem(k, s.data[k]));
+      }
+    }
+    count++;
+  }
+
+  showToast(`✓ Restored all saves for ${count} game${count === 1 ? '' : 's'}!`, 'success');
+
+  const iframe = document.getElementById('game-iframe');
+  if (iframe) {
+    const cur = iframe.src;
+    iframe.src = 'about:blank';
+    setTimeout(() => { iframe.src = cur; }, 80);
+  }
+  renderCloudSavesListInModal();
+};
+
 window.restoreSaveToBrowser = async function(gameId) {
   const save = cloudSavesCache[gameId] || await loadGameFromCloud(gameId);
-  if (!save || !save.data) {
+  if (!save) {
     showToast('No save data available to restore.', 'error');
     return;
   }
 
-  const data = save.data;
-  let count = 0;
-  if (typeof data === 'object') {
-    Object.keys(data).forEach(k => {
-      localStorage.setItem(k, data[k]);
-      count++;
-    });
+  if (window.PluhSaveBridge) {
+    await window.PluhSaveBridge.restoreAllSaveDataForGame(gameId, save);
+  } else {
+    const data = save.data;
+    if (data && typeof data === 'object') {
+      Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+    }
   }
 
-  showToast(`✓ Restored ${count} save files for ${save.gameTitle || gameId}! Reloading game...`, 'success');
-  window.dispatchEvent(new CustomEvent('crimx-save-restored', { detail: { gameId, data } }));
+  showToast(`✓ Restored save for ${save.gameTitle || GAME_TITLES[gameId] || gameId}! Reloading game...`, 'success');
+  const iframe = document.getElementById('game-iframe');
+  if (iframe) {
+    const cur = iframe.src;
+    iframe.src = 'about:blank';
+    setTimeout(() => { iframe.src = cur; }, 80);
+  }
 };
 
 window.crimxForceBackupAll = async function() {
   showToast('Scanning local save files to backup...', 'info');
   autoSyncLocalToCloud();
   await renderCloudSavesListInModal();
-  showToast('All local game files synced to CrimX Cloud!', 'success');
+  showToast('All local game files synced to Cloud!', 'success');
+};
+
+let currentAuthSubTab = 'login';
+window.switchAuthSubTab = function(mode) {
+  currentAuthSubTab = mode;
+  const loginBtn = document.getElementById('auth-tab-login-btn');
+  const signupBtn = document.getElementById('auth-tab-signup-btn');
+  const nameWrap = document.getElementById('crimx-signup-name-wrap');
+  const submitBtn = document.getElementById('crimx-submit-btn');
+
+  if (loginBtn && signupBtn) {
+    if (mode === 'signup') {
+      signupBtn.className = 'cm-btn cm-btn-yellow';
+      loginBtn.className = 'cm-btn cm-btn-blue';
+      if (nameWrap) nameWrap.style.display = 'block';
+      if (submitBtn) submitBtn.textContent = 'Create PluhMath Account';
+    } else {
+      loginBtn.className = 'cm-btn cm-btn-yellow';
+      signupBtn.className = 'cm-btn cm-btn-blue';
+      if (nameWrap) nameWrap.style.display = 'none';
+      if (submitBtn) submitBtn.textContent = 'Sign In with Email';
+    }
+  }
 };
 
 function ensureCrimXModal() {
@@ -661,15 +1039,15 @@ function ensureCrimXModal() {
     <div class="cm-modal-card crimx-modal-card">
       <div class="cm-modal-header">
         <div class="cm-modal-title">
-          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" style="width:22px; height:22px; object-fit:contain;">
-          <span>CrimX Account & Cloud Save</span>
+          <span style="font-size:1.2rem;">👤</span>
+          <span>PluhMath Account & Cloud Save</span>
         </div>
         <button class="cm-modal-close" onclick="closeCrimXModal()">✕</button>
       </div>
 
       <!-- Tab Navigation -->
       <div class="crimx-tabs">
-        <button class="crimx-tab-btn active" data-tab="login" onclick="switchCrimXTab('login')">DoorAuth Sign In</button>
+        <button class="crimx-tab-btn active" data-tab="login" onclick="switchCrimXTab('login')">Account Sign In</button>
         <button class="crimx-tab-btn" data-tab="cloud" onclick="switchCrimXTab('cloud')">☁️ Cloud Saves</button>
         <button class="crimx-tab-btn" data-tab="profile" onclick="switchCrimXTab('profile')">Profile</button>
       </div>
@@ -677,91 +1055,84 @@ function ensureCrimXModal() {
       <!-- TAB: Sign In -->
       <div class="crimx-tab-pane active" id="crimx-tab-login">
         <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:1rem; line-height:1.5;">
-          Sign in via official CrimX DoorAuth to securely sync your game progress to the cloud so you never lose saves when clearing browser cache.
+          Sign in or create an account to backup your game saves to the cloud so you never lose progress when clearing browser cache or changing computers.
         </p>
 
-        <!-- Official CrimX DoorAuth Buttons -->
-        <div style="margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem;">
-          <button type="button" class="crimx-signin-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')">
-            <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
-            <span>Sign in with CrimX (crimsonflame.net)</span>
-          </button>
-          <button type="button" class="crimx-signin-btn crimx-signin-gh-btn" style="width: 100%; justify-content: center;" onclick="triggerCrimXDoorAuth('https://crimsonflame-official.github.io')">
-            <img src="https://crimsonflame-official.github.io/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
-            <span>Sign in with CrimX (crimsonflame-official.github.io)</span>
-          </button>
+        <!-- Login / Signup Toggle -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+          <button type="button" id="auth-tab-login-btn" class="cm-btn cm-btn-yellow" style="flex:1; justify-content:center; font-size:0.82rem; font-weight:700;" onclick="switchAuthSubTab('login')">Sign In</button>
+          <button type="button" id="auth-tab-signup-btn" class="cm-btn cm-btn-blue" style="flex:1; justify-content:center; font-size:0.82rem; font-weight:700;" onclick="switchAuthSubTab('signup')">Create Account</button>
         </div>
 
-        <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0; color:var(--text-dim); font-size:0.78rem;">
-          <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
-          <span>OR DIRECT EMAIL LOGIN</span>
-          <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
-        </div>
-
-        <form id="crimx-login-form" onsubmit="handleCrimXLogin(event)">
-          <div class="cm-input-group" style="margin-bottom:0.75rem;">
-            <label style="font-size:0.78rem; color:var(--text-dim); font-weight:600;">EMAIL</label>
-            <input type="email" id="crimx-login-email" class="cm-url-input" required placeholder="player@crimsonflame.net">
+        <form id="crimx-login-form" onsubmit="handleCrimXEmailAuth(event)">
+          <div id="crimx-signup-name-wrap" class="cm-input-group" style="margin-bottom:0.75rem; display:none;">
+            <label style="font-size:0.76rem; color:var(--text-dim); font-weight:600;">DISPLAY NAME / USERNAME</label>
+            <input type="text" id="crimx-reg-name" class="cm-url-input" placeholder="PlayerOne">
           </div>
-          <div class="cm-input-group" style="margin-bottom:1.25rem;">
-            <label style="font-size:0.78rem; color:var(--text-dim); font-weight:600;">PASSWORD</label>
+          <div class="cm-input-group" style="margin-bottom:0.75rem;">
+            <label style="font-size:0.76rem; color:var(--text-dim); font-weight:600;">EMAIL</label>
+            <input type="email" id="crimx-login-email" class="cm-url-input" required placeholder="player@example.com">
+          </div>
+          <div class="cm-input-group" style="margin-bottom:1rem;">
+            <label style="font-size:0.76rem; color:var(--text-dim); font-weight:600;">PASSWORD</label>
             <input type="password" id="crimx-login-password" class="cm-url-input" required placeholder="••••••••">
           </div>
-          <button type="submit" class="cm-btn cm-btn-yellow" style="width:100%; justify-content:center; padding:0.75rem;">
-            Sign in with Email
+          <button type="submit" id="crimx-submit-btn" class="cm-btn cm-btn-yellow" style="width:100%; justify-content:center; padding:0.7rem; font-weight:700;">
+            Sign In with Email
           </button>
         </form>
 
-        <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0; color:var(--text-dim); font-size:0.78rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0 0.75rem 0; color:var(--text-dim); font-size:0.74rem;">
           <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
-          <span>OR</span>
+          <span>OR SIGN IN WITH</span>
           <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
         </div>
 
-        <button type="button" class="cm-btn cm-btn-blue" style="width:100%; justify-content:center; padding:0.65rem;" onclick="handleCrimXGoogleLogin()">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:16px; height:16px;">
-          Continue with Google
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+          <button type="button" class="cm-btn cm-btn-blue" style="justify-content:center; padding:0.6rem; font-size:0.8rem;" onclick="handleCrimXGoogleLogin()" title="Sign in with Google">
+            <svg width="15" height="15" viewBox="0 0 48 48" style="margin-right:6px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Google
+          </button>
+          <button type="button" class="cm-btn cm-btn-blue" style="justify-content:center; padding:0.6rem; font-size:0.8rem;" onclick="handleCrimXMicrosoftLogin()" title="Sign in with Microsoft">
+            <svg width="15" height="15" viewBox="0 0 21 21" style="margin-right:6px;"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+            Microsoft
+          </button>
+        </div>
+
+        <button type="button" class="crimx-signin-btn" style="width:100%; justify-content:center;" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')">
+          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
+          <span>Sign in with CrimX</span>
         </button>
       </div>
 
       <!-- TAB: Cloud Saves -->
       <div class="crimx-tab-pane" id="crimx-tab-cloud">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <div>
-            <span style="font-weight:600; color:#fff; font-size:0.95rem;">Active Cloud Backups</span>
-            <p style="font-size:0.78rem; color:var(--text-dim); margin:0.2rem 0 0 0;">Stored in Firestore • Never lost on cache clear</p>
-          </div>
-          <button class="cm-btn cm-btn-blue" style="font-size:0.78rem; padding:0.4rem 0.75rem;" onclick="crimxForceBackupAll()">
-            ☁️ Backup Now
-          </button>
-        </div>
-
         <div id="crimx-cloud-saves-list" class="crimx-saves-container"></div>
       </div>
 
       <!-- TAB: Profile -->
       <div class="crimx-tab-pane" id="crimx-tab-profile">
         <div id="crimx-profile-details">
-          <!-- Rich Profile Card with Custom Banner & Badges -->
+          <!-- Profile Card -->
           <div class="crimx-prof-card">
             <div id="crimx-prof-banner" class="crimx-prof-banner"></div>
             <div class="crimx-prof-body">
               <div class="crimx-prof-avatar-wrap">
                 <img id="crimx-prof-pfp" src="https://crimsonflame.net/assets/crimx-logo.png" class="crimx-prof-pfp" alt="Avatar">
                 <div id="crimx-prof-badges" class="crimx-prof-badges">
-                  <span class="crimx-badge-pill crimx-badge-verified">🛡️ DoorAuth Verified</span>
+                  <span class="crimx-badge-pill crimx-badge-verified">🛡️ Active Player</span>
                 </div>
               </div>
               <div class="crimx-prof-name-group">
                 <div id="crimx-prof-name" class="crimx-prof-name">Player</div>
                 <div id="crimx-prof-handle" class="crimx-prof-handle">@player</div>
-                <div id="crimx-prof-email" class="crimx-prof-email">player@crimsonflame.net</div>
+                <div id="crimx-prof-email" class="crimx-prof-email">player@example.com</div>
               </div>
               <div id="crimx-prof-bio" class="crimx-prof-bio" style="display:none;"></div>
             </div>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:1rem;">
             <button class="cm-btn cm-btn-blue" style="justify-content:center; padding:0.65rem;" onclick="switchCrimXTab('cloud')">
               ☁️ Manage Cloud Game Saves
             </button>
@@ -783,13 +1154,24 @@ function ensureCrimXModal() {
 
 window.switchCrimXTab = switchTab;
 
-window.handleCrimXLogin = async function(e) {
+window.handleCrimXEmailAuth = async function(e) {
   e.preventDefault();
   const email = document.getElementById('crimx-login-email').value.trim();
   const password = document.getElementById('crimx-login-password').value;
+  const nameInput = document.getElementById('crimx-reg-name');
+  const displayName = nameInput ? nameInput.value.trim() : '';
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    if (currentAuthSubTab === 'signup') {
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      if (displayName && userCred.user) {
+        await updateProfile(userCred.user, { displayName: displayName });
+      }
+      showToast('Account created successfully!', 'success');
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+      showToast('Signed in successfully!', 'success');
+    }
     closeCrimXModal();
   } catch (err) {
     showToast(err.message.replace('Firebase: ', ''), 'error');
@@ -805,13 +1187,22 @@ window.handleCrimXGoogleLogin = async function() {
   }
 };
 
+window.handleCrimXMicrosoftLogin = async function() {
+  try {
+    await signInWithPopup(auth, microsoftProvider);
+    closeCrimXModal();
+  } catch (err) {
+    showToast(err.message.replace('Firebase: ', ''), 'error');
+  }
+};
+
 window.handleCrimXLogout = async function() {
   try {
     localStorage.removeItem('crimx_doorauth_session');
     await signOut(auth);
     currentCrimXUser = null;
     updateCrimXUI(null);
-    showToast('Signed out of CrimX.', 'info');
+    showToast('Signed out.', 'info');
     closeCrimXModal();
   } catch (err) {
     showToast(err.message, 'error');
@@ -854,3 +1245,4 @@ document.addEventListener('DOMContentLoaded', () => {
     populateProfileCard(currentCrimXUser);
   }
 });
+

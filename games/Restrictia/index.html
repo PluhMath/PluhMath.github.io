@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Chronicles of Restrictia: Rush — Island Grand Tour</title>
+  <meta name="description" content="A colorful 3D island arcade tour across The Split Archipelago. Pick a ride, drift across three regions, and take to land or sea.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230a0e1a%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2250%22>🏎️</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div class="loading-overlay" id="loading-screen">
+    <div class="loading-title">RESTRICTIA</div>
+    <div class="loading-subtitle">ISLAND GRAND TOUR 3D</div>
+    <div class="loading-bar-track">
+      <div class="loading-bar-fill" id="loading-bar"></div>
+    </div>
+    <div class="loading-lore" id="loading-lore">
+      The Split Archipelago — two nations divided by five miles of open ocean,
+      connected only by the vehicles brave enough to cross it.
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  <div id="error-banner" style="display:none; position:fixed; top:0; left:0; right:0; background:rgba(210,20,20,0.95); color:#fff; padding:10px 16px; font-family:monospace; font-size:12px; z-index:999999; white-space:pre-wrap; border-bottom:2px solid #ff5555; pointer-events:auto;"></div>
+  <script>
+    window.addEventListener('error', function(e) {
+      var b = document.getElementById('error-banner');
+      if (b) { b.style.display = 'block'; b.textContent = 'RESTRICTIA ERROR: ' + (e.error ? (e.error.stack || e.error.message) : (e.message + ' at ' + e.filename + ':' + e.lineno)); }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var b = document.getElementById('error-banner');
+      if (b) { b.style.display = 'block'; b.textContent = 'RESTRICTIA PROMISE REJECTION: ' + (e.reason ? (e.reason.stack || e.reason) : e); }
+    });
+  </script>
+
+  <!-- 3D Canvas -->
+  <canvas id="game-canvas" tabindex="0"></canvas>
+
+  <!-- HUD Container (populated by hud.js) -->
+  <div id="game-hud" class="hud-container" style="display:none;"></div>
+
+  <!-- Menu Container (populated by menu.js) -->
+  <div id="game-menu" style="display:none;"></div>
+
+  <!-- Babylon.js CDN -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+  <!-- Game Bootstrap -->
+  <script type="module">
+    import { RestrictiaGame } from './engine/core.js';
+
+    // Loading screen management
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar = document.getElementById('loading-bar');
+    const loreEl = document.getElementById('loading-lore');
+
+    const loreTexts = [
+      'The Split Archipelago — two nations divided by five miles of open ocean, connected only by the vehicles brave enough to cross it.',
+      'MilesTech Industries: "58,000 AAA batteries. One wooden pallet. Zero compromises."',
+      'The Council of Restrictia mandates all vehicles display the Smiling Rabbit decal.',
+      'President Crimson commissioned a 40-foot bronze statue of himself on the southern coast.',
+      'The underwater tunnels beneath The 5-Mile Divide were built during the first Restrictia civil works project.',
+      'Waymo autonomous fleet vehicles still spin their LiDAR arrays — even when parked.',
+      'James Anderdingus holds the unofficial speed record across the divide. His vehicle was on fire.'
+    ];
+
+    let loreIndex = 0;
+    const loreInterval = setInterval(() => {
+      loreIndex = (loreIndex + 1) % loreTexts.length;
+      loreEl.style.opacity = '0';
+      setTimeout(() => {
+        loreEl.textContent = loreTexts[loreIndex];
+        loreEl.style.opacity = '1';
+      }, 400);
+    }, 4000);
+
+    // Simulate loading progress
+    let progress = 0;
+    const loadInterval = setInterval(() => {
+      progress += 2 + Math.random() * 5;
+      if (progress > 95) progress = 95;
+      loadingBar.style.width = progress + '%';
+    }, 100);
+
+    // Initialize game
+    async function boot() {
+      const canvas = document.getElementById('game-canvas');
+      canvas.focus();
+
+      const game = new RestrictiaGame(canvas);
+
+      try {
+        await game.init();
+
+        // Complete loading
+        clearInterval(loadInterval);
+        clearInterval(loreInterval);
+        loadingBar.style.width = '100%';
+
+        setTimeout(() => {
+          loadingScreen.classList.add('fade-out');
+          setTimeout(() => {
+            loadingScreen.style.display = 'none';
+            if (new URLSearchParams(window.location.search).get('autostart') === '1') {
+              game.startGame('milestech_mk1');
+            }
+          }, 600);
+        }, 500);
+
+      } catch (err) {
+        console.error('Restrictia boot failed:', err);
+        clearInterval(loadInterval);
+        clearInterval(loreInterval);
+        loadingBar.style.width = '100%';
+        loadingBar.style.background = '#ff1744';
+        loreEl.textContent = 'Engine initialization failed. Check console for details.';
+        loreEl.style.color = '#ff1744';
+      }
+    }
+
+    // Wait for Babylon.js to be ready
+    if (typeof BABYLON !== 'undefined') {
+      boot();
+    } else {
+      // Fallback: wait for script load
+      window.addEventListener('load', () => {
+        if (typeof BABYLON !== 'undefined') {
+          boot();
+        } else {
+          document.getElementById('loading-lore').textContent =
+            'Failed to load 3D engine. Please check your internet connection.';
+          document.getElementById('loading-lore').style.color = '#ff1744';
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

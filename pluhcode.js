@@ -202,215 +202,23 @@
   }
 
   // ==========================================================================
-  // PLUHCODE MODAL & REDEMPTION SYSTEM
+  // DIRECT TOOLS & MODS (NO CODES NEEDED)
   // ==========================================================================
 
-  function ensurePluhCodeModal() {
-    if (document.getElementById('pluhcode-modal')) return;
-
-    const modal = document.createElement('div');
-    modal.id = 'pluhcode-modal';
-    modal.className = 'cm-modal-backdrop';
-    modal.innerHTML = `
-      <div class="cm-modal-box pluhcode-modal-card">
-        <div class="cm-modal-header">
-          <div style="display:flex; align-items:center; gap:0.6rem;">
-            <span style="font-size:1.4rem;">🔑</span>
-            <h3 style="margin:0; font-family:'Outfit',sans-serif; color:#fff; font-size:1.25rem;">PluhCode Terminal</h3>
-          </div>
-          <button class="cm-modal-close" onclick="window.closePluhCodeModal()">&times;</button>
-        </div>
-
-        <div style="padding:1.4rem;">
-          <p style="margin:0 0 1rem 0; color:var(--text-muted); font-size:0.9rem; line-height:1.5;">
-            Enter an exclusive secret code to unlock special abilities, game modifications, and developer tools.
-          </p>
-
-          <div style="display:flex; gap:0.5rem; margin-bottom:1.2rem;">
-            <input type="text" id="pluhcode-input" class="pluhcode-input" placeholder="Enter secret code (e.g. JohnPorkRulesAll)..." autocomplete="off" spellcheck="false">
-            <button id="pluhcode-submit-btn" class="cm-btn cm-btn-yellow" style="padding:0.7rem 1.4rem; white-space:nowrap; font-weight:700;">
-              Redeem
-            </button>
-          </div>
-
-          <div id="pluhcode-message" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.88rem; margin-bottom:1.2rem;"></div>
-
-          <div class="pluhcode-unlocked-section">
-            <h4 style="margin:0 0 0.8rem 0; color:#fff; font-size:0.95rem; display:flex; align-items:center; justify-content:space-between;">
-              <span>Unlocked Perks & Tools</span>
-              <span id="pluhcode-perk-count" style="font-size:0.78rem; color:var(--accent-cyan); font-weight:700;"></span>
-            </h4>
-
-            <div id="pluhcode-perks-list" style="display:flex; flex-direction:column; gap:0.7rem;">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Bind submit
-    const submitBtn = modal.querySelector('#pluhcode-submit-btn');
-    const input = modal.querySelector('#pluhcode-input');
-
-    submitBtn.addEventListener('click', handleCodeSubmit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleCodeSubmit();
-    });
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) window.closePluhCodeModal();
-    });
-  }
-
-  function handleCodeSubmit() {
-    const input = document.getElementById('pluhcode-input');
-    const msgEl = document.getElementById('pluhcode-message');
-    if (!input) return;
-
-    const rawCode = input.value.trim();
-    if (!rawCode) {
-      showModalMessage('Please type a code first!', 'error');
-      return;
-    }
-
-    const clean = rawCode.toLowerCase();
-
-    // 1. Code: JohnPorkRulesAll
-    if (clean === 'johnporkrulesall') {
+  window.toggleJohnPorkMode = function() {
+    if (!johnPorkActive) {
       activateJohnPorkMode();
-      input.value = '';
-      showModalMessage('🐷 CODE ACCEPTED: JohnPorkRulesAll! Every image and sprite has been transformed into John Pork until you refresh.', 'success');
-      renderUnlockedPerksList();
-      return;
-    }
-
-    // 2. Code: PluhOfTheCentury
-    if (clean === 'pluhofthecentury') {
-      setPerkUnlocked('save_editor');
-      input.value = '';
-      showModalMessage('🔓 CODE ACCEPTED: PluhOfTheCentury! PluhHax Save File Editor is now permanently unlocked.', 'success');
-      renderUnlockedPerksList();
-      setTimeout(() => {
-        window.closePluhCodeModal();
-        window.openPluhHaxModal();
-      }, 900);
-      return;
-    }
-
-    // Invalid Code
-    showModalMessage(`❌ Invalid code "${rawCode}". Try another secret code!`, 'error');
-    input.classList.add('pluhcode-shake');
-    setTimeout(() => input.classList.remove('pluhcode-shake'), 500);
-  }
-
-  function showModalMessage(text, type) {
-    const msgEl = document.getElementById('pluhcode-message');
-    if (!msgEl) return;
-    msgEl.style.display = 'block';
-    msgEl.textContent = text;
-    if (type === 'success') {
-      msgEl.style.background = 'rgba(16, 185, 129, 0.15)';
-      msgEl.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-      msgEl.style.color = '#34d399';
     } else {
-      msgEl.style.background = 'rgba(239, 68, 68, 0.15)';
-      msgEl.style.border = '1px solid rgba(239, 68, 68, 0.4)';
-      msgEl.style.color = '#f87171';
+      showPluhToast('🐷 John Pork Mode is currently active! Refresh the page to reset sprites.', 'info');
     }
-  }
-
-  function renderUnlockedPerksList() {
-    const list = document.getElementById('pluhcode-perks-list');
-    const countEl = document.getElementById('pluhcode-perk-count');
-    if (!list) return;
-
-    const perks = getUnlockedPerks();
-    let items = [];
-
-    // John Pork perk status
-    if (johnPorkActive) {
-      items.push(`
-        <div class="pluhcode-perk-card active-perk">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <img src="${JOHN_PORK_IMAGE_URL}" style="width:36px; height:36px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,0.2);">
-            <div>
-              <div style="font-weight:700; color:#fff; font-size:0.9rem;">John Pork Rules All</div>
-              <div style="font-size:0.78rem; color:#34d399;">Active • All graphics transformed (until refresh)</div>
-            </div>
-          </div>
-          <span class="cm-tile-badge" style="position:static; background:rgba(16, 185, 129, 0.85);">ACTIVE</span>
-        </div>
-      `);
-    } else {
-      items.push(`
-        <div class="pluhcode-perk-card">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span style="font-size:1.4rem;">🐷</span>
-            <div>
-              <div style="font-weight:700; color:#fff; font-size:0.9rem;">John Pork Mode</div>
-              <div style="font-size:0.78rem; color:var(--text-dim);">Enter "JohnPorkRulesAll" to activate</div>
-            </div>
-          </div>
-          <button class="cm-btn cm-btn-blue" style="padding:0.35rem 0.75rem; font-size:0.8rem;" onclick="document.getElementById('pluhcode-input').value='JohnPorkRulesAll'; document.getElementById('pluhcode-submit-btn').click();">Redeem</button>
-        </div>
-      `);
-    }
-
-    // Save File Editor perk
-    if (perks['save_editor']) {
-      items.push(`
-        <div class="pluhcode-perk-card unlocked-perk">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span style="font-size:1.4rem;">💾</span>
-            <div>
-              <div style="font-weight:700; color:#fff; font-size:0.9rem;">PluhHax Save File Editor</div>
-              <div style="font-size:0.78rem; color:var(--accent-cyan);">Unlocked via PluhOfTheCentury</div>
-            </div>
-          </div>
-          <button class="cm-btn cm-btn-yellow" style="padding:0.4rem 0.9rem; font-size:0.82rem; font-weight:700;" onclick="window.closePluhCodeModal(); window.openPluhHaxModal();">
-            ⚡ Open Editor
-          </button>
-        </div>
-      `);
-    } else {
-      items.push(`
-        <div class="pluhcode-perk-card">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span style="font-size:1.4rem;">🔒</span>
-            <div>
-              <div style="font-weight:700; color:#fff; font-size:0.9rem;">Save File Editor (Hacking Tool)</div>
-              <div style="font-size:0.78rem; color:var(--text-dim);">Enter "PluhOfTheCentury" to unlock</div>
-            </div>
-          </div>
-          <button class="cm-btn cm-btn-blue" style="padding:0.35rem 0.75rem; font-size:0.8rem;" onclick="document.getElementById('pluhcode-input').value='PluhOfTheCentury'; document.getElementById('pluhcode-submit-btn').click();">Redeem</button>
-        </div>
-      `);
-    }
-
-    list.innerHTML = items.join('');
-    if (countEl) {
-      const activeCount = (johnPorkActive ? 1 : 0) + (perks['save_editor'] ? 1 : 0);
-      countEl.textContent = `${activeCount} / 2 Unlocked`;
-    }
-  }
-
-  window.openPluhCodeModal = function() {
-    ensurePluhCodeModal();
-    renderUnlockedPerksList();
-    const modal = document.getElementById('pluhcode-modal');
-    if (modal) modal.classList.add('active');
-    setTimeout(() => {
-      const inp = document.getElementById('pluhcode-input');
-      if (inp) inp.focus();
-    }, 100);
   };
 
+  window.activateJohnPorkMode = activateJohnPorkMode;
+  window.openPluhCodeModal = function() {
+    window.openPluhHaxModal();
+  };
   window.closePluhCodeModal = function() {
-    const modal = document.getElementById('pluhcode-modal');
-    if (modal) modal.classList.remove('active');
+    window.closePluhHaxModal();
   };
 
   // ==========================================================================
@@ -435,9 +243,11 @@
       { id: 'all_json', name: 'All Storage (JSON)', desc: 'Complete raw localStorage snapshot' }
     ],
     'deltarune': [
-      { id: 'dr_file0', name: 'dr_file0 (Slot 1)', desc: 'Kris, Susie, Ralsei stats & Dark World flags' },
-      { id: 'deltarune.ini', name: 'deltarune.ini (Config)', desc: 'Chapter progress and key items' },
-      { id: 'dr_file1', name: 'dr_file1 (Slot 2)', desc: 'Secondary chapter save slot' },
+      { id: 'filech1_0', name: 'filech1_0 (Ch1 Slot 1)', desc: 'Kris, Susie, Ralsei stats & Dark World flags' },
+      { id: 'dr.ini', name: 'dr.ini (Progress & Completion)', desc: 'Chapter 1 completed flags & story checkpoint' },
+      { id: 'filech1_1', name: 'filech1_1 (Ch1 Slot 2)', desc: 'Secondary chapter save slot' },
+      { id: 'filech2_0', name: 'filech2_0 (Ch2 Slot 1)', desc: 'Chapter 2 Cyber World save slot' },
+      { id: 'dr_file0', name: 'dr_file0 (Legacy Slot)', desc: 'Legacy save format' },
       { id: 'all_json', name: 'All Storage (JSON)', desc: 'Complete raw localStorage snapshot' }
     ],
     'tiny-fishing': [
@@ -458,8 +268,12 @@
     'file0': "Frisk\n20\n99999\n99999\n999\n999\n999\n999\n99999\n999999\n11\n11\n11\n11\n11\n11\n11\n11\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0",
     'undertale.ini': "[General]\nName=\"Frisk\"\nLove=\"20\"\nTime=\"99999\"\nKills=\"999\"\n[Sans]\nPass=\"1\"\n[Flowey]\nmet=\"1\"",
     'file9': "Frisk\n20\n99999\n99999\n999\n999\n999\n999\n99999\n999999\n11\n11\n11\n11\n11\n11\n11\n11\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0",
-    'dr_file0': "Kris\n100\n99999\n99999\n99999\n99999\n100\n100\n0\n0",
-    'deltarune.ini': "[General]\nName=\"Kris\"\nChapter=\"1\"\nTime=\"99999\"\n[Dark]\nRecruits=\"All\"",
+    'filech1_0': "Kris\n1\n90\n90\n12\n2\n0\n12\n2\n150\n2\n1\n1\n5\n4\n1\n4\n6\n1\n1\n3\n1\n1\n1\n1\n1\n1\n1\n1\n1",
+    'dr.ini': "[G]\nroom=\"132\"\ntime=\"14400\"\n[General]\nName=\"Kris\"\nChapter=\"1\"\nComplete=\"1\"\n[CH1]\ncompleted=\"1\"\nrecruits=\"all\"\npacifist=\"1\"",
+    'filech1_1': "Kris\n1\n90\n90\n12\n2\n0\n12\n2\n150\n2\n1\n1\n5\n4\n1\n4\n6\n1\n1\n3\n1\n1\n1\n1\n1\n1\n1\n1\n1",
+    'filech2_0': "Kris\n2\n120\n120\n14\n4\n0\n14\n4\n250\n2\n1\n1\n5\n4\n1\n4\n6\n1\n1\n3\n1\n1\n1\n1\n1\n1\n1\n1\n1",
+    'dr_file0': "Kris\n1\n90\n90\n12\n2\n0\n12\n2\n150\n2\n1\n1\n5\n4\n1\n4\n6\n1\n1\n3\n1\n1\n1\n1\n1\n1\n1\n1\n1",
+    'deltarune.ini': "[G]\nroom=\"132\"\ntime=\"14400\"\n[General]\nName=\"Kris\"\nChapter=\"1\"\nComplete=\"1\"\n[CH1]\ncompleted=\"1\"\nrecruits=\"all\"\npacifist=\"1\"",
     'tiny_fishing_save': "{\n  \"cash\": 999999999,\n  \"depth\": 10000,\n  \"maxFish\": 100,\n  \"offlineEarnings\": 999999\n}",
     'run3_save': "{\n  \"powerCells\": 99999,\n  \"unlockedCharacters\": [\"runner\", \"skater\", \"lizard\", \"duplicator\", \"gentleman\", \"angel\", \"pastafarian\"],\n  \"maxLevel\": 300\n}",
     'pluhshooter_save': "{\n  \"highScore\": 999999,\n  \"unlockedWeapons\": [\"pistol\", \"shotgun\", \"rifle\", \"sniper\", \"rocket\"],\n  \"kills\": 9999\n}"
@@ -478,7 +292,7 @@
             <span style="font-size:1.4rem;">📝</span>
             <div>
               <h3 style="margin:0; font-family:'Outfit',sans-serif; color:#fff; font-size:1.25rem;">PluhSave — Save File Text Editor</h3>
-              <span style="font-size:0.75rem; color:var(--accent-cyan); font-weight:700;">UNLOCKED VIA PLUHOFTHECENTURY • RAW FILE TEXT EDITOR</span>
+              <span style="font-size:0.75rem; color:var(--accent-cyan); font-weight:700;">RAW SAVE FILE TEXT EDITOR & MOD ENGINE</span>
             </div>
           </div>
           <button class="cm-modal-close" onclick="window.closePluhHaxModal()">&times;</button>
@@ -647,13 +461,6 @@
   }
 
   window.openPluhHaxModal = function() {
-    const perks = getUnlockedPerks();
-    if (!perks['save_editor']) {
-      window.openPluhCodeModal();
-      showModalMessage('🔒 Save File Editor is locked! Redeem code "PluhOfTheCentury" to access it.', 'error');
-      return;
-    }
-
     ensurePluhHaxModal();
     activeEditorGame = detectActiveGame();
     const select = document.getElementById('pluhhax-game-select');
@@ -726,7 +533,15 @@
       drawer.style.display = isFile0 ? 'block' : 'none';
     }
 
-    if (isFile0) {
+    if (activeEditorGame === 'deltarune') {
+      bar.innerHTML = `
+        <button class="pluhhax-preset-btn" style="border-color:var(--accent-cyan); color:#00f0ff; font-weight:700;" onclick="window.pluhCompleteChapter(1)">Complete Chapter 1</button>
+        <button class="pluhhax-preset-btn" style="border-color:var(--accent-cyan); color:#00f0ff; font-weight:700;" onclick="window.pluhCompleteChapter(2)">Complete Chapter 2</button>
+        <button class="pluhhax-preset-btn" style="border-color:var(--accent-cyan); color:#00f0ff; font-weight:700;" onclick="window.pluhCompleteChapter(3)">Complete Chapter 3</button>
+        <button class="pluhhax-preset-btn" style="border-color:var(--accent-cyan); color:#00f0ff; font-weight:700;" onclick="window.pluhCompleteChapter(4)">Complete Chapter 4</button>
+        <button class="pluhhax-preset-btn" onclick="window.pluhEditorUndoBackup()">↩️ Undo</button>
+      `;
+    } else if (isFile0) {
       bar.innerHTML = `
         <button class="pluhhax-preset-btn" onclick="window.pluhPatchMaxStats()">⚡ Max Stats (LV 20, 99999 HP, 999 ATK)</button>
         <button class="pluhhax-preset-btn" onclick="window.pluhPatchGold()">💰 999,999 Gold</button>
@@ -838,6 +653,138 @@
     showPluhToast('🥧 Filled inventory with Butterscotch Pies (Item ID 11)!', 'success');
   };
 
+  // Deltarune Chapter Completion Preset (legitimate stats, no inflated dark dollars)
+  window.pluhCompleteChapter = function(chapNum) {
+    const textarea = document.getElementById('pluh-code-textarea');
+    const ch = parseInt(chapNum, 10) || 1;
+
+    // Normal, non-cheated dark dollars & stats per chapter
+    const normalMoney = ch === 1 ? '150' : ch === 2 ? '250' : ch === 3 ? '350' : '450';
+    const hpMax = ch === 1 ? '90' : ch === 2 ? '120' : ch === 3 ? '140' : '160';
+    const atkBase = ch === 1 ? '12' : ch === 2 ? '14' : ch === 3 ? '16' : '18';
+
+    // Standard save text with clean normal items
+    const saveLines = [
+      "Kris",
+      String(ch),
+      hpMax,
+      hpMax,
+      atkBase,
+      "2",
+      "0",
+      atkBase,
+      "2",
+      normalMoney,
+      "2", "1", "1", "5", "4", "1", "4", "6", "1", "1", "3",
+      "1", "1", "1", "1", "1", "1", "1", "1", "1"
+    ];
+    const saveText = saveLines.join('\n');
+
+    // dr.ini lines marking completed chapters up to selected chapter
+    let iniLines = [
+      "[G]",
+      `room="${ch === 1 ? '132' : ch === 2 ? '200' : '300'}"`,
+      `time="${ch * 14400}"`,
+      "[General]",
+      'Name="Kris"',
+      `Chapter="${ch}"`,
+      'Complete="1"'
+    ];
+
+    for (let c = 1; c <= ch; c++) {
+      iniLines.push(`[CH${c}]`);
+      iniLines.push('completed="1"');
+      iniLines.push('recruits="all"');
+    }
+    const drIniText = iniLines.join('\n');
+
+    // Save automatic backup before replacing
+    try {
+      localStorage.setItem('pluh_dr_backup_pre_restore', JSON.stringify({
+        file: localStorage.getItem(`filech${ch}_0`) || localStorage.getItem('dr_file0') || '',
+        dr_ini: localStorage.getItem('dr.ini') || localStorage.getItem('deltarune.ini') || ''
+      }));
+    } catch(e) {}
+
+    // Populate all known keys for Deltarune
+    const keysMap = {
+      [`filech${ch}_0`]: saveText,
+      [`filech${ch}_1`]: saveText,
+      'dr_file0': saveText,
+      'dr.ini': drIniText,
+      'deltarune.ini': drIniText,
+      [`dtfilech${ch}_0`]: saveText,
+      'dtdr.ini': drIniText,
+      [`dt/_savedata/filech${ch}_0`]: saveText,
+      'dt/_savedata/dr.ini': drIniText
+    };
+
+    for (const [k, v] of Object.entries(keysMap)) {
+      localStorage.setItem(k, v);
+    }
+
+    // Also inject into GameMaker HTML5 IndexedDB store if available
+    try {
+      if (window.indexedDB) {
+        const openReq = indexedDB.open('/_savedata');
+        openReq.onsuccess = (ev) => {
+          const db = ev.target.result;
+          if (db.objectStoreNames.contains('FILE_DATA')) {
+            const tx = db.transaction(['FILE_DATA'], 'readwrite');
+            const store = tx.objectStore('FILE_DATA');
+            const enc = new TextEncoder();
+            store.put({ timestamp: Date.now(), mode: 33206, contents: enc.encode(saveText) }, `/_savedata/filech${ch}_0`);
+            store.put({ timestamp: Date.now(), mode: 33206, contents: enc.encode(drIniText) }, '/_savedata/dr.ini');
+          }
+        };
+      }
+    } catch(e) {}
+
+    if (textarea) {
+      textarea.value = currentTextFileName.includes('ini') ? drIniText : saveText;
+      updateLineNumbers();
+      updateCursorPos();
+    }
+
+    // Post to iframe
+    const iframe = document.getElementById('game-iframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        iframe.contentWindow.postMessage({
+          type: 'saveDataChanged',
+          gameId: 'deltarune',
+          allLocalStorageData: keysMap
+        }, '*');
+      } catch(e) {}
+    }
+
+    updateStatus(`✓ Completed Chapter ${ch}! Story progress saved.`, '#34d399');
+    showPluhToast(`✓ Completed Chapter ${ch}! Story checkpoint updated.`, 'success');
+  };
+
+  window.pluhEditorUndoBackup = function() {
+    try {
+      const stored = localStorage.getItem('pluh_dr_backup_pre_restore');
+      if (!stored) {
+        alert('No previous backup found.');
+        return;
+      }
+      const b = JSON.parse(stored);
+      if (b.filech1_0) {
+        localStorage.setItem('filech1_0', b.filech1_0);
+        localStorage.setItem('dr_file0', b.filech1_0);
+      }
+      if (b.dr_ini) {
+        localStorage.setItem('dr.ini', b.dr_ini);
+        localStorage.setItem('deltarune.ini', b.dr_ini);
+      }
+      loadFileTextIntoEditor();
+      showPluhToast('↩️ Restored previous backup save data!', 'info');
+    } catch(err) {
+      alert('Failed to restore backup: ' + err.message);
+    }
+  };
+
   window.pluhFormatJSON = function() {
     const textarea = document.getElementById('pluh-code-textarea');
     if (!textarea) return;
@@ -925,6 +872,12 @@
     const newText = textarea.value;
     const updatedData = {};
 
+    // Automatic non-destructive backup before modifying
+    try {
+      const backupKey = `pluh_backup_${activeEditorGame}_${currentTextFileName}`;
+      localStorage.setItem(backupKey, localStorage.getItem(currentTextFileName) || '');
+    } catch(e) {}
+
     if (currentTextFileName === 'all_json') {
       try {
         const parsed = JSON.parse(newText);
@@ -950,18 +903,39 @@
         updatedData[`uty_${currentTextFileName}`] = newText;
       } else if (activeEditorGame === 'deltarune') {
         localStorage.setItem(`dr_${currentTextFileName}`, newText);
+        localStorage.setItem(`dt${currentTextFileName}`, newText);
+        localStorage.setItem(`dt/_savedata/${currentTextFileName}`, newText);
         updatedData[`dr_${currentTextFileName}`] = newText;
+        updatedData[`dt${currentTextFileName}`] = newText;
+        updatedData[`dt/_savedata/${currentTextFileName}`] = newText;
+
+        // Also inject into IndexedDB for GameMaker Emscripten
+        try {
+          if (window.indexedDB) {
+            const req = indexedDB.open('/_savedata');
+            req.onsuccess = (ev) => {
+              const idb = ev.target.result;
+              if (idb.objectStoreNames.contains('FILE_DATA')) {
+                const tx = idb.transaction(['FILE_DATA'], 'readwrite');
+                const st = tx.objectStore('FILE_DATA');
+                const enc = new TextEncoder();
+                const idbKey = currentTextFileName.startsWith('/') ? currentTextFileName : `/_savedata/${currentTextFileName}`;
+                st.put({
+                  timestamp: Date.now(),
+                  mode: 33206,
+                  contents: enc.encode(newText)
+                }, idbKey);
+              }
+            };
+          }
+        } catch(e) {}
       }
     }
 
-    // Dispatch to iframe game
+    // Dispatch safely to iframe game without wiping session
     const iframe = document.getElementById('game-iframe');
     if (iframe && iframe.contentWindow) {
       try {
-        iframe.contentWindow.postMessage({
-          type: 'initialSaveDataResponse',
-          allLocalStorageData: updatedData
-        }, '*');
         iframe.contentWindow.postMessage({
           type: 'saveDataChanged',
           gameId: activeEditorGame,
@@ -969,10 +943,13 @@
         }, '*');
       } catch (e) {}
 
-      // Reload iframe so changes take effect
-      const currentSrc = iframe.src;
-      iframe.src = 'about:blank';
-      setTimeout(() => { iframe.src = currentSrc; }, 80);
+      // Prompt before reload so we never wipe in-progress sessions unexpectedly
+      const askReload = confirm('Save data saved safely with backup! Would you like to restart the game to load the changes now? (Click Cancel if you are currently playing)');
+      if (askReload) {
+        const currentSrc = iframe.src;
+        iframe.src = 'about:blank';
+        setTimeout(() => { iframe.src = currentSrc; }, 80);
+      }
     }
 
     // Trigger PMS and CrimX Cloud sync
@@ -982,8 +959,8 @@
       allLocalStorageData: updatedData
     }, '*');
 
-    updateStatus('💾 Saved & injected text save into game!', '#34d399');
-    showPluhToast(`💾 Saved ${currentTextFileName}! Game restarted with new save data.`, 'success');
+    updateStatus('💾 Save injected safely with automatic backup!', '#34d399');
+    showPluhToast(`💾 Saved ${currentTextFileName}!`, 'success');
   };
 
   function updateStatus(msg, color) {
@@ -1032,38 +1009,31 @@
     }, 4500);
   }
 
-  // Inject PluhCode button into navbar on load if missing
+  // Inject Save Editor button into navbar on load if missing and not in sidebar
   function injectPluhCodeNavButton() {
+    if (document.getElementById('pluhsave-nav-btn') || document.getElementById('pluhsave-sidebar-btn')) return;
+    if (document.getElementById('pm-sidebar')) return; // In sidebar layout, keep header clean!
     const actions = document.querySelector('.cm-header-actions');
-    if (actions && !document.getElementById('pluhcode-nav-btn')) {
+    if (actions) {
       const btn = document.createElement('button');
-      btn.id = 'pluhcode-nav-btn';
+      btn.id = 'pluhsave-nav-btn';
       btn.className = 'cm-btn cm-btn-blue';
-      btn.innerHTML = '<span>🔑</span> PluhCode';
-      btn.title = 'Enter secret codes to unlock tools and perks';
-      btn.onclick = window.openPluhCodeModal;
-
-      // Insert next to DoorAuth slot or at beginning
-      const authSlot = document.getElementById('crimx-auth-slot');
-      if (authSlot && authSlot.nextSibling) {
-        actions.insertBefore(btn, authSlot.nextSibling);
-      } else {
-        actions.insertBefore(btn, actions.firstChild);
-      }
+      btn.innerHTML = '<span>📝</span> Save Editor';
+      btn.title = 'Open Save File Editor';
+      btn.onclick = window.openPluhHaxModal;
+      actions.appendChild(btn);
     }
   }
 
-  // Inject PluhHax button into game player actions if unlocked
+  // Inject Save Editor button into game player actions directly
   function injectPluhHaxPlayerButton() {
-    const perks = getUnlockedPerks();
-    if (!perks['save_editor']) return;
     const playerActions = document.querySelector('.cm-player-actions');
     if (playerActions && !document.getElementById('pluhhax-player-btn')) {
       const btn = document.createElement('button');
       btn.id = 'pluhhax-player-btn';
       btn.className = 'cm-btn cm-btn-yellow';
-      btn.innerHTML = '⚡ PluhHax';
-      btn.title = 'Open PluhHax Save File Editor to cheat / modify this game';
+      btn.innerHTML = '⚡ Save Editor';
+      btn.title = 'Open Save File Editor to edit saves or complete chapters';
       btn.onclick = window.openPluhHaxModal;
       playerActions.insertBefore(btn, playerActions.firstChild);
     }

@@ -84,9 +84,13 @@
   }
 
   // Gather save data keys for a specific game
-  function collectGameSaveData(gameId) {
+  async function collectGameSaveData(gameId) {
+    if (window.PluhSaveBridge) {
+      const full = await window.PluhSaveBridge.extractAllSaveDataForGame(gameId);
+      return full;
+    }
     const config = GAME_CONFIG[gameId];
-    if (!config) return {};
+    if (!config) return { localStorage: {}, indexedDB: null };
 
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -97,22 +101,14 @@
       }
     }
 
-    // Also check cached cloud/bridge save objects
-    try {
-      const cachedBridge = localStorage.getItem(`pluhmath_cache_${gameId}`);
-      if (cachedBridge) {
-        data[`__bridge_${gameId}`] = cachedBridge;
-      }
-    } catch (e) {}
-
-    return data;
+    return { localStorage: data, indexedDB: null };
   }
 
   // Gather all save data across all games (Global)
-  function collectGlobalSaveData() {
+  async function collectGlobalSaveData() {
     const globalData = {};
     for (const gameId of Object.keys(GAME_CONFIG)) {
-      globalData[gameId] = collectGameSaveData(gameId);
+      globalData[gameId] = await collectGameSaveData(gameId);
     }
     return globalData;
   }
@@ -128,20 +124,22 @@
     }
 
     const config = GAME_CONFIG[targetGame];
-    const saveData = collectGameSaveData(targetGame);
-    const keysCount = Object.keys(saveData).length;
+    const fullSave = await collectGameSaveData(targetGame);
+    const localData = fullSave.localStorage || fullSave.data || fullSave;
+    const keysCount = Object.keys(localData).length;
 
     const pmsObject = {
       format: 'PLUHMATH_SAVE',
-      version: 1,
+      version: 2,
       scope: 'single',
       gameId: targetGame,
-      gameTitle: config ? config.title : targetGame,
+      gameTitle: config ? config.title : (window.PluhSaveBridge ? window.PluhSaveBridge.getGameTitle(targetGame) : targetGame),
       suggestedFilename: config ? config.filename : `${targetGame}.pms`,
       timestamp: Date.now(),
       isoDate: new Date().toISOString(),
       keysCount: keysCount,
-      data: saveData
+      data: localData,
+      indexedDB: fullSave.indexedDB || null
     };
 
     const content = JSON.stringify(pmsObject, null, 2);
@@ -264,7 +262,7 @@
     input.click();
   }
 
-  function processPMSContent(text, filename, currentGame) {
+  async function processPMSContent(text, filename, currentGame) {
     let parsed = null;
     try {
       parsed = JSON.parse(text);
@@ -280,50 +278,48 @@
     }
 
     const saveScope = parsed.scope || 'single';
-    const saveGameId = parsed.gameId;
+    const rawGameId = parsed.gameId;
+    const saveGameId = window.PluhSaveBridge ? window.PluhSaveBridge.normalizeGameId(rawGameId) : rawGameId;
+    const normCurrent = window.PluhSaveBridge ? window.PluhSaveBridge.normalizeGameId(currentGame) : currentGame;
 
     // 2. Strict Cross-Game Mismatch Guard
-    // If the user tries to import an Undertale save into Deltarune (or vice versa), reject it!
-    if (currentGame && saveScope === 'single' && saveGameId && saveGameId !== currentGame) {
-      const saveTitle = parsed.gameTitle || saveGameId;
-      const expectedTitle = GAME_CONFIG[currentGame] ? GAME_CONFIG[currentGame].title : currentGame;
+    if (normCurrent && saveScope === 'single' && saveGameId && saveGameId !== normCurrent) {
+      const saveTitle = parsed.gameTitle || (window.PluhSaveBridge ? window.PluhSaveBridge.getGameTitle(saveGameId) : saveGameId);
+      const expectedTitle = GAME_CONFIG[normCurrent] ? GAME_CONFIG[normCurrent].title : (window.PluhSaveBridge ? window.PluhSaveBridge.getGameTitle(normCurrent) : normCurrent);
       alert(`⚠️ This save is for a different game!\n\nThis file contains save data for "${saveTitle}", but you are currently playing "${expectedTitle}".`);
       showPMSToast('This save is for a different game!', 'error');
       return false;
     }
 
-    // 3. Unpack and Apply Data
+    // 3. Unpack and Apply Data using PluhSaveBridge
     let restoredCount = 0;
 
     if (saveScope === 'single') {
-      const data = parsed.data || {};
-      Object.keys(data).forEach(k => {
-        if (!k.startsWith('__bridge_')) {
-          localStorage.setItem(k, data[k]);
-          restoredCount++;
-        }
-      });
+      if (window.PluhSaveBridge) {
+        await window.PluhSaveBridge.restoreAllSaveDataForGame(saveGameId, parsed);
+      } else {
+        const data = parsed.data || {};
+        Object.keys(data).forEach(k => {
+          if (!k.startsWith('__bridge_')) {
+            localStorage.setItem(k, data[k]);
+            restoredCount++;
+          }
+        });
+      }
 
-      showPMSToast(`✓ Restored ${restoredCount} save items for ${parsed.gameTitle || saveGameId}!`, 'success');
+      showPMSToast(`✓ Restored save data for ${parsed.gameTitle || (window.PluhSaveBridge ? window.PluhSaveBridge.getGameTitle(saveGameId) : saveGameId)}!`, 'success');
 
       // Dispatch restore event to reload iframes
       window.dispatchEvent(new CustomEvent('pluhmath-pms-restored', {
-        detail: { gameId: saveGameId, data: data }
+        detail: { gameId: saveGameId, data: parsed.data }
       }));
 
-      // Notify any active iframe directly
+      // Reload frame smoothly
       const iframe = document.getElementById('game-iframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({
-          type: 'initialSaveDataResponse',
-          messageId: 'pms_restore_' + Date.now(),
-          allLocalStorageData: data
-        }, '*');
-      }
-
-      // Reload frame if reload function exists
-      if (typeof window.reloadGame === 'function') {
-        setTimeout(() => window.reloadGame(), 500);
+      if (iframe) {
+        const cur = iframe.src;
+        iframe.src = 'about:blank';
+        setTimeout(() => { iframe.src = cur; }, 100);
       }
 
     } else if (saveScope === 'global') {
@@ -331,15 +327,19 @@
       const games = parsed.data || {};
       for (const gId of Object.keys(games)) {
         const gData = games[gId] || {};
-        Object.keys(gData).forEach(k => {
-          if (!k.startsWith('__bridge_')) {
-            localStorage.setItem(k, gData[k]);
-            restoredCount++;
-          }
-        });
+        if (window.PluhSaveBridge) {
+          await window.PluhSaveBridge.restoreAllSaveDataForGame(gId, gData);
+        } else {
+          Object.keys(gData).forEach(k => {
+            if (!k.startsWith('__bridge_')) {
+              localStorage.setItem(k, gData[k]);
+              restoredCount++;
+            }
+          });
+        }
       }
 
-      showPMSToast(`✓ Global Restore Complete: ${restoredCount} items applied across all games!`, 'success');
+      showPMSToast(`✓ Global Restore Complete: Applied saves across all games!`, 'success');
       window.dispatchEvent(new CustomEvent('pluhmath-pms-restored', {
         detail: { gameId: 'global', totalRestored: restoredCount }
       }));
@@ -355,26 +355,30 @@
 
   async function continuousAutoSaveToPMS(gameId, updatedData) {
     if (!activeFileHandle || !activeHandleGameId) return;
-    if (activeHandleGameId !== gameId) return;
+    const normTarget = window.PluhSaveBridge ? window.PluhSaveBridge.normalizeGameId(gameId) : gameId;
+    const normActive = window.PluhSaveBridge ? window.PluhSaveBridge.normalizeGameId(activeHandleGameId) : activeHandleGameId;
+    if (normActive !== normTarget) return;
 
     try {
-      const config = GAME_CONFIG[gameId];
-      const allData = collectGameSaveData(gameId);
+      const config = GAME_CONFIG[normTarget];
+      const allSave = await collectGameSaveData(normTarget);
+      const allData = allSave.localStorage || allSave.data || allSave;
       if (updatedData && typeof updatedData === 'object') {
         Object.assign(allData, updatedData);
       }
 
       const pmsObject = {
         format: 'PLUHMATH_SAVE',
-        version: 1,
+        version: 2,
         scope: 'single',
-        gameId: gameId,
-        gameTitle: config ? config.title : gameId,
-        suggestedFilename: config ? config.filename : `${gameId}.pms`,
+        gameId: normTarget,
+        gameTitle: config ? config.title : (window.PluhSaveBridge ? window.PluhSaveBridge.getGameTitle(normTarget) : normTarget),
+        suggestedFilename: config ? config.filename : `${normTarget}.pms`,
         timestamp: Date.now(),
         isoDate: new Date().toISOString(),
         keysCount: Object.keys(allData).length,
-        data: allData
+        data: allData,
+        indexedDB: allSave.indexedDB || null
       };
 
       const writable = await activeFileHandle.createWritable();

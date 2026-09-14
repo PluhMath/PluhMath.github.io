@@ -1,5 +1,5 @@
-// PluhMath Games Database - Sleek Minimalist Edition
-const GAMES_DB = [
+// PluhMath Games Database - Dynamic Auto-Discovery Edition
+let GAMES_DB = [
   {
     id: 'undertale',
     slug: 'undertale',
@@ -233,10 +233,114 @@ const GAMES_DB = [
     badgeColor: 'rgba(6, 182, 212, 0.9)',
     thumbnail: 'games/Tiny Fishing/res/images/startbg.jpg',
     bgGradient: 'linear-gradient(135deg, #071926, #0e3046)'
+  },
+  {
+    id: 'restrictia',
+    slug: 'restrictia',
+    url: 'restrictia.html',
+    title: 'Restrictia: Island Overdrive 3D',
+    category: '3D & Racing',
+    categorySlug: '3d',
+    categories: ['3d', 'arcade', 'action'],
+    rating: '5.0',
+    plays: '0',
+    tags: ['3D', 'Racing', 'Kart', 'Open World', 'Babylon.js', 'Drift', 'Jetski', 'Amphibious', 'Free Roam'],
+    desc: 'Full 3D open-world arcade kart racing across The Split Archipelago. 6 vehicles, amphibious jetski/submarine mode, drift boost mechanics, and Tomodachi-style voice synthesis.',
+    howToPlay: 'Select a vehicle, then explore freely. W/Up to accelerate, A/D to steer. Space to hop & drift — hold while turning for blue/orange spark boosts. Drive into water to become a jetski. Shift to dive, Ctrl to surface. Toggle Pit Stops in the pause menu for fuel management.',
+    controls: [
+      { key: 'W / Up Arrow', desc: 'Accelerate' },
+      { key: 'S / Down Arrow', desc: 'Brake / Reverse' },
+      { key: 'A, D / Left, Right', desc: 'Steer' },
+      { key: 'Spacebar', desc: 'Hop / Drift' },
+      { key: 'Shift / Q', desc: 'Submerge (dive)' },
+      { key: 'Ctrl / E', desc: 'Surface (rise)' },
+      { key: 'Esc', desc: 'Pause / Resume' }
+    ],
+    gamePath: 'games/Restrictia/index.html',
+    icon: '🏎️',
+    badge: 'NEW • 3D WORLD',
+    badgeColor: 'rgba(0, 229, 255, 0.9)',
+    thumbnail: '',
+    bgGradient: 'linear-gradient(135deg, #0a0e1a, #0d1f30)'
   }
 ];
 
-// Helper to get game by id or slug
+// Helper to get game by id, slug, or folder name
 function getGameById(idOrSlug) {
-  return GAMES_DB.find(g => g.id === idOrSlug || g.slug === idOrSlug);
+  if (!idOrSlug) return null;
+  const target = String(idOrSlug).toLowerCase().trim();
+  let found = GAMES_DB.find(g => 
+    g.id.toLowerCase() === target || 
+    (g.slug && g.slug.toLowerCase() === target) ||
+    (g.folder && g.folder.toLowerCase() === target) ||
+    g.title.toLowerCase() === target
+  );
+
+  // Dynamic fallback: if not in database, construct on-demand for any folder
+  if (!found) {
+    const cleanTitle = target
+      .replace(/[-_.]/g, ' ')
+      .replace(/\bio\b/gi, '.io')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    found = {
+      id: target,
+      folder: target,
+      slug: target,
+      url: `game.html?id=${encodeURIComponent(target)}`,
+      title: cleanTitle,
+      category: 'Community & Games',
+      categorySlug: 'arcade',
+      categories: ['arcade', 'action', 'skill'],
+      rating: '5.0',
+      plays: 'New',
+      gamePath: `games/${target}/index.html`,
+      icon: '🎮',
+      badge: 'AUTO-DETECTED',
+      badgeColor: 'rgba(59, 130, 246, 0.9)',
+      desc: `Enjoy ${cleanTitle} playable directly in PluhMath Arcade.`,
+      howToPlay: 'Use standard keyboard and mouse controls to play.',
+      controls: [
+        { key: 'Arrow Keys / WASD', desc: 'Movement & action' },
+        { key: 'Space / Enter', desc: 'Confirm / Action' }
+      ]
+    };
+    GAMES_DB.push(found);
+  }
+
+  return found;
+}
+
+// Auto-discovery: load games-manifest.json and merge any discovered games
+async function initDynamicGames() {
+  try {
+    const res = await fetch('games-manifest.json');
+    if (res.ok) {
+      const manifest = await res.json();
+      if (Array.isArray(manifest)) {
+        manifest.forEach(m => {
+          const idx = GAMES_DB.findIndex(g => g.id === m.id || (g.folder && m.folder && g.folder.toLowerCase() === m.folder.toLowerCase()));
+          if (idx !== -1) {
+            GAMES_DB[idx] = { ...GAMES_DB[idx], ...m };
+          } else {
+            GAMES_DB.push(m);
+          }
+        });
+        window.dispatchEvent(new CustomEvent('pluhmath-games-updated', { detail: GAMES_DB }));
+      }
+    }
+  } catch (err) {
+    console.debug('[Games Engine] Manifest load fallback (using static registry):', err);
+  }
+}
+
+// Global exports
+window.GAMES_DB = GAMES_DB;
+window.getGameById = getGameById;
+window.initDynamicGames = initDynamicGames;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDynamicGames);
+} else {
+  initDynamicGames();
 }

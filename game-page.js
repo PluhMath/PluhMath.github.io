@@ -7,8 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initGamePage() {
   // Determine game from page attribute or URL query
-  const pageGameId = document.body.dataset.gameId || new URLSearchParams(window.location.search).get('id') || 'pluhshooter';
+  const pageGameId = document.body.dataset.gameId || new URLSearchParams(window.location.search).get('id') || 'undertale';
   const game = getGameById(pageGameId) || GAMES_DB[0];
+
+  document.body.dataset.gameId = game.id;
 
   // Update Page Title and Meta if needed
   if (!document.title.includes(game.title)) {
@@ -17,13 +19,32 @@ function initGamePage() {
 
   // Populate dynamic game elements if they exist
   const frame = document.getElementById('game-iframe');
-  if (frame && (!frame.src || frame.src.endsWith('about:blank') || frame.src === window.location.href)) {
-    frame.src = game.gamePath;
+  if (frame) {
+    if (!frame.src || frame.src.endsWith('about:blank') || frame.src === window.location.href) {
+      frame.src = game.gamePath;
+    }
+    frame.addEventListener('load', async () => {
+      if (window.PluhSaveBridge) {
+        const state = await window.PluhSaveBridge.extractAllSaveDataForGame(game.id);
+        if (state && Object.keys(state.localStorage).length > 0) {
+          try {
+            frame.contentWindow.postMessage({
+              type: 'initialSaveDataResponse',
+              messageId: 'auto_init_' + Date.now(),
+              allLocalStorageData: state.localStorage
+            }, '*');
+          } catch (e) {}
+        }
+      }
+    });
   }
 
   // Populate details
   const titleEl = document.getElementById('game-title-el');
   if (titleEl) titleEl.textContent = game.title;
+
+  const breadcrumbEl = document.getElementById('game-title-breadcrumb');
+  if (breadcrumbEl) breadcrumbEl.textContent = game.title;
 
   const descEl = document.getElementById('game-desc-el');
   if (descEl) descEl.textContent = game.desc;

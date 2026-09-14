@@ -1,0 +1,318 @@
+[
+  {
+    "id": "deltarune",
+    "folder": "Deltarune",
+    "slug": "deltarune",
+    "url": "deltarune.html",
+    "title": "Deltarune",
+    "category": "RPG & Story",
+    "categorySlug": "rpg",
+    "categories": [
+      "rpg",
+      "action",
+      "skill"
+    ],
+    "rating": "5.0",
+    "plays": "480K",
+    "gamePath": "games/Deltarune/index.html",
+    "icon": "🔷",
+    "badge": "POPULAR",
+    "badgeColor": "rgba(0, 240, 255, 0.9)",
+    "desc": "Toby Fox’s parallel story to Undertale. Explore the mysterious Dark World with Kris and Susie, graze bullets for TP, and conquer intense encounters.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "drift-boss",
+    "folder": "drift-boss",
+    "slug": "drift-boss",
+    "url": "drift-boss.html",
+    "title": "Drift Boss",
+    "category": "Skill & Strategy",
+    "categorySlug": "skill",
+    "categories": [
+      "skill",
+      "action",
+      "skill"
+    ],
+    "rating": "4.8",
+    "plays": "215K",
+    "gamePath": "games/drift-boss/index.html",
+    "icon": "🏎️",
+    "badge": "ARCADE",
+    "badgeColor": "rgba(16, 185, 129, 0.85)",
+    "desc": "Endless 3D one-click drifting arcade game. Steer around tricky sharp turns, navigate pitfalls, and collect coins to unlock customizable cars.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "pluhshooter-io",
+    "folder": "PluhShooter.io",
+    "slug": "pluhshooter-io",
+    "url": "pluhshooter.html",
+    "title": "PluhShooter.io",
+    "category": "3D & FPS",
+    "categorySlug": "3d",
+    "categories": [
+      "3d",
+      "action",
+      "skill"
+    ],
+    "rating": "4.9",
+    "plays": "145K",
+    "gamePath": "games/PluhShooter.io/index.html",
+    "icon": "🔫",
+    "badge": "3D VOXEL",
+    "badgeColor": "rgba(139, 92, 246, 0.9)",
+    "desc": "Fast-paced 3D voxel first-person shooter. Battle AI bots or players in Free For All and Team Deathmatch, or survive endless waves of zombies.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "pluhus",
+    "folder": "PluhUs",
+    "slug": "pluhus",
+    "url": "pluhus.html",
+    "title": "PluhUs: Browser Edition",
+    "category": "Skill & Strategy",
+    "categorySlug": "strategy",
+    "categories": [
+      "strategy",
+      "action",
+      "skill"
+    ],
+    "rating": "4.7",
+    "plays": "165K",
+    "gamePath": "games/PluhUs/index.html",
+    "icon": "🚀",
+    "badge": "STEALTH",
+    "badgeColor": "rgba(239, 68, 68, 0.85)",
+    "desc": "Custom 2D Among Us browser game engine featuring impostor sabotages, door lockdowns, emergency meetings, ventilation tunnels, and sneaky kills.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "restrictia",
+    "folder": "Restrictia",
+    "slug": "restrictia",
+    "url": "restrictia.html",
+    "title": "Restrictia: Island Overdrive 3D",
+    "category": "3D & Racing",
+    "categorySlug": "3d",
+    "categories": [
+      "3d",
+      "action",
+      "skill"
+    ],
+    "rating": "5.0",
+    "plays": "120K",
+    "gamePath": "games/Restrictia/index.html",
+    "icon": "🏎️",
+    "badge": "NEW • 3D WORLD",
+    "badgeColor": "rgba(0, 229, 255, 0.9)",
+    "desc": "Full 3D open-world arcade kart racing across The Split Archipelago with amphibious jetski mode, drift boosts, and 6 vehicles.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "run3",
+    "folder": "Run3",
+    "slug": "run3",
+    "url": "run-3.html",
+    "title": "Run 3",
+    "category": "Runner & Rhythm",
+    "categorySlug": "runner",
+    "categories": [
+      "runner",
+      "action",
+      "skill"
+    ],
+    "rating": "4.9",
+    "plays": "390K",
+    "gamePath": "games/Run3/index.html",
+    "icon": "🏃‍♂️",
+    "badge": "CLASSIC",
+    "badgeColor": "rgba(245, 158, 11, 0.9)",
+    "desc": "The iconic galaxy runner. Sprint, jump, and rotate through floating space tunnels while dodging falling crumbling tiles and unlocking alien characters.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "tiny-fishing",
+    "folder": "Tiny Fishing",
+    "slug": "tiny-fishing",
+    "url": "tiny-fishing.html",
+    "title": "Tiny Fishing",
+    "category": "Skill & Strategy",
+    "categorySlug": "skill",
+    "categories": [
+      "skill",
+      "action",
+      "skill"
+    ],
+    "rating": "4.8",
+    "plays": "310K",
+    "gamePath": "games/Tiny Fishing/index.html",
+    "icon": "🎣",
+    "badge": "CASUAL HIT",
+    "badgeColor": "rgba(6, 182, 212, 0.9)",
+    "desc": "Cast your line, hook rare and legendary fish, and reel them up to earn cash. Upgrade your fishing pole depth, max catch capacity, and passive offline income!",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "undertale",
+    "folder": "Undertale",
+    "slug": "undertale",
+    "url": "undertale.html",
+    "title": "Undertale",
+    "category": "RPG & Story",
+    "categorySlug": "rpg",
+    "categories": [
+      "rpg",
+      "action",
+      "skill"
+    ],
+    "rating": "5.0",
+    "plays": "520K",
+    "gamePath": "games/Undertale/Undertale-main/index.html",
+    "icon": "❤️",
+    "badge": "LEGENDARY",
+    "badgeColor": "rgba(239, 68, 68, 0.9)",
+    "desc": "The acclaimed indie RPG masterpiece. Dodge bones and blasters in the legendary Sans boss encounter, navigate dialogue, and survive with your soul intact.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "undertale-yellow",
+    "folder": "Undertale Yellow",
+    "slug": "undertale-yellow",
+    "url": "undertale-yellow.html",
+    "title": "Undertale Yellow",
+    "category": "RPG & Story",
+    "categorySlug": "rpg",
+    "categories": [
+      "rpg",
+      "action",
+      "skill"
+    ],
+    "rating": "5.0",
+    "plays": "490K",
+    "gamePath": "games/Undertale Yellow/index.html",
+    "icon": "💛",
+    "badge": "JUSTICE SOUL",
+    "badgeColor": "rgba(234, 179, 8, 0.95)",
+    "desc": "The acclaimed fan-made Undertale prequel. Guide Clover, the seventh human with the Justice soul, through the Underground with revolver attacks and rich new characters.",
+    "howToPlay": "Use standard keyboard and mouse controls to play.",
+    "controls": [
+      {
+        "key": "Arrow Keys / WASD",
+        "desc": "Movement & action"
+      },
+      {
+        "key": "Space / Enter",
+        "desc": "Select / Confirm"
+      }
+    ]
+  },
+  {
+    "id": "geometry-dash",
+    "folder": "Scratch/GeometryDashSubzeroPLM",
+    "slug": "geometry-dash",
+    "url": "geometry-dash.html",
+    "title": "Geometry Dash Subzero",
+    "category": "Runner & Rhythm",
+    "categorySlug": "runner",
+    "categories": [
+      "runner",
+      "skill",
+      "arcade"
+    ],
+    "rating": "4.9",
+    "plays": "280K",
+    "gamePath": "Scratch/GeometryDashSubzeroPLM/index.html",
+    "icon": "⚡",
+    "badge": "RHYTHM",
+    "badgeColor": "rgba(236, 72, 153, 0.9)",
+    "desc": "Jump, fly, and flip your way through dangerous neon subzero obstacles synced to electrifying EDM beats.",
+    "howToPlay": "Time your jumps precisely to the rhythm of the music. Avoid spikes and saw blades.",
+    "controls": [
+      {
+        "key": "Space / Click",
+        "desc": "Jump / Fly"
+      }
+    ]
+  }
+]

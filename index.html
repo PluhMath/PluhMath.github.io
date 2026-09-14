@@ -34,15 +34,20 @@
     </div>
   </div>
 
-  <!-- Navigation Header -->
+  <!-- Navigation Header (Clean & Minimal: Logo, Search, User & Panic) -->
   <header class="cm-navbar">
-    <a class="cm-logo" href="index.html" title="PluhMath Home">
-      <div class="cm-logo-box">∑</div>
-      <div class="cm-logo-text">
-        <span class="cm-logo-main">PLUHMATH</span>
-        <span class="cm-logo-sub">Arcade</span>
-      </div>
-    </a>
+    <div style="display:flex; align-items:center; gap:0.9rem;">
+      <button class="pm-sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar Navigation" aria-label="Toggle Sidebar">
+        ☰
+      </button>
+      <a class="cm-logo" href="index.html" title="PluhMath Home">
+        <div class="cm-logo-box">∑</div>
+        <div class="cm-logo-text">
+          <span class="cm-logo-main">PLUHMATH</span>
+          <span class="cm-logo-sub">Arcade</span>
+        </div>
+      </a>
+    </div>
 
     <!-- Minimalist Search Bar -->
     <div class="cm-search-wrapper">
@@ -50,40 +55,89 @@
       <button class="cm-search-btn" title="Search">🔍</button>
     </div>
 
-    <!-- Actions -->
+    <!-- Right Header Actions (Only User Profile & Emergency Panic) -->
     <div class="cm-header-actions">
       <div id="crimx-auth-slot"></div>
-      <button class="cm-btn cm-btn-blue" id="pluhcode-nav-btn" onclick="openPluhCodeModal()" title="Enter secret codes to unlock perks and hacking tools">
-        <span>🔑</span> PluhCode
-      </button>
-      <button class="cm-btn cm-btn-blue" onclick="openPMSModal()" title="Export or Import all games using portable .PMS save file">
-        <span>💾</span> .PMS Saves
-      </button>
-      <button class="cm-btn cm-btn-yellow" id="random-btn" title="Play a random unblocked game">
-        <span>🎲</span> Surprise Me
-      </button>
-      <button class="cm-btn cm-btn-blue" id="cloak-btn" title="Disguise this browser tab">
-        <span>🎭</span> Cloak Tab
-      </button>
-      <button class="cm-btn cm-btn-blue panic-settings-trigger" onclick="openPanicModal()" title="Choose where Panic Mode redirects you">
-        <span>⚙️</span> Panic URL
-      </button>
       <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
         🚨 Panic
       </button>
     </div>
   </header>
 
-  <!-- Categories Subnav -->
-  <nav class="cm-cat-nav" id="category-nav">
-    <a href="#" class="cm-cat-link active" data-cat="all">All Games</a>
-    <a href="#" class="cm-cat-link" data-cat="rpg">RPG & Story</a>
-    <a href="#" class="cm-cat-link" data-cat="3d">3D & FPS</a>
-    <a href="#" class="cm-cat-link" data-cat="runner">Runner & Rhythm</a>
-    <a href="#" class="cm-cat-link" data-cat="skill">Skill & Strategy</a>
-  </nav>
+  <!-- App Layout with Modern Sidebar -->
+  <div class="pm-app-layout">
+    <!-- Backdrop for mobile drawer -->
+    <div class="pm-backdrop" id="pm-backdrop" onclick="toggleSidebar()"></div>
 
-  <!-- Main Content Container -->
+    <!-- Left Sidebar -->
+    <aside class="pm-sidebar" id="pm-sidebar">
+      <div>
+        <!-- Categories Section -->
+        <div class="pm-sidebar-group">
+          <div class="pm-sidebar-heading">Browse Games</div>
+          <nav class="pm-sidebar-nav" id="category-nav">
+            <button class="pm-nav-item cm-cat-link active" data-cat="all">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎮</span> All Games</span>
+              <span class="pm-nav-badge" id="sidebar-game-count">10</span>
+            </button>
+            <button class="pm-nav-item cm-cat-link" data-cat="rpg">
+              <span class="pm-nav-left"><span class="pm-nav-icon">❤️</span> RPG & Story</span>
+            </button>
+            <button class="pm-nav-item cm-cat-link" data-cat="3d">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🔫</span> 3D & FPS</span>
+            </button>
+            <button class="pm-nav-item cm-cat-link" data-cat="runner">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🏃‍♂️</span> Runner & Rhythm</span>
+            </button>
+            <button class="pm-nav-item cm-cat-link" data-cat="skill">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎯</span> Skill & Strategy</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Tools & Perks Section -->
+        <div class="pm-sidebar-group">
+          <div class="pm-sidebar-heading">Tools & Perks</div>
+          <nav class="pm-sidebar-nav" id="pm-sidebar-tools">
+            <button class="pm-nav-item" id="pluhsave-sidebar-btn" onclick="openPluhHaxModal()" title="Direct Save File Text Editor for all games">
+              <span class="pm-nav-left"><span class="pm-nav-icon">📝</span> Save Editor</span>
+            </button>
+            <button class="pm-nav-item" id="johnpork-sidebar-btn" onclick="toggleJohnPorkMode()" title="Toggle John Pork sprite replacement mode">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🐷</span> John Pork Mode</span>
+            </button>
+            <button class="pm-nav-item" onclick="openPMSModal()" title="Export or Import all games using portable .PMS save file">
+              <span class="pm-nav-left"><span class="pm-nav-icon">💾</span> .PMS Saves</span>
+            </button>
+            <button class="pm-nav-item" id="random-btn" title="Play a random unblocked game">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎲</span> Surprise Me</span>
+            </button>
+            <button class="pm-nav-item" id="cloak-btn" title="Disguise this browser tab">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎭</span> Cloak Tab</span>
+            </button>
+            <button class="pm-nav-item panic-settings-trigger" onclick="openPanicModal()" title="Configure Panic Mode Destination URL">
+              <span class="pm-nav-left"><span class="pm-nav-icon">⚙️</span> Panic URL</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="pm-sidebar-footer">
+        <div class="pm-cloud-status-card" onclick="openCrimXModal()" title="View CrimX Cloud Saves">
+          <span style="font-size:1.1rem;">☁️</span>
+          <div>
+            <div style="font-weight:700; font-size:0.8rem;">CrimX Cloud</div>
+            <div style="font-size:0.7rem; color:var(--text-dim);">Auto-sync & restore active</div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem; color:var(--text-dim); text-align:center; padding-top:4px;">
+          Panic Shortcut: <kbd style="background:#000; color:#00f0ff; padding:1px 5px; border-radius:3px;">]</kbd>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="pm-content-wrapper">
   <main class="cm-container">
 
     <!-- Minimalist Spotlight -->
@@ -122,7 +176,7 @@
     <section id="all-games-section">
       <div class="cm-section-header">
         <h2 class="cm-section-title" id="all-games-title">All Unblocked Games</h2>
-        <span style="font-size:0.85rem; color:var(--text-dim);" id="game-count-label">9 Games</span>
+        <span style="font-size:0.85rem; color:var(--text-dim);" id="game-count-label">10 Games</span>
       </div>
       <div class="cm-games-grid" id="all-games-grid">
         <!-- Rendered by JS -->
@@ -141,6 +195,8 @@
       Sleek, fast, unblocked web games. Zero clutter, always available.
     </p>
   </footer>
+    </div> <!-- .pm-content-wrapper -->
+  </div> <!-- .pm-app-layout -->
 
   <script src="games-data.js"></script>
   <script src="panic-system.js"></script>
@@ -160,6 +216,11 @@
 
       renderHomePage();
       setupEvents();
+      window.addEventListener('pluhmath-games-updated', () => {
+        renderHomePage();
+        const sidebarCount = document.getElementById('sidebar-game-count');
+        if (sidebarCount) sidebarCount.textContent = GAMES_DB.length;
+      });
     });
 
     function renderHomePage() {
@@ -242,8 +303,16 @@
         cloakTabPrompt();
       });
     }
+
+    window.toggleSidebar = function() {
+      const sidebar = document.getElementById('pm-sidebar');
+      const backdrop = document.getElementById('pm-backdrop');
+      if (sidebar) sidebar.classList.toggle('open');
+      if (backdrop) backdrop.classList.toggle('active');
+    };
   </script>
   <script type="module" src="crimx-auth.js"></script>
+  <script src="pluh-save-bridge.js"></script>
   <script src="pms-save-system.js"></script>
   <script src="pluhcode.js"></script>
 </body>
