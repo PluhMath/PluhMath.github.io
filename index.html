@@ -94,31 +94,6 @@
             </button>
           </nav>
         </div>
-
-        <!-- Tools & Perks Section -->
-        <div class="pm-sidebar-group">
-          <div class="pm-sidebar-heading">Tools & Perks</div>
-          <nav class="pm-sidebar-nav" id="pm-sidebar-tools">
-            <button class="pm-nav-item" id="pluhsave-sidebar-btn" onclick="openPluhHaxModal()" title="Direct Save File Text Editor for all games">
-              <span class="pm-nav-left"><span class="pm-nav-icon">📝</span> Save Editor</span>
-            </button>
-            <button class="pm-nav-item" id="johnpork-sidebar-btn" onclick="toggleJohnPorkMode()" title="Toggle John Pork sprite replacement mode">
-              <span class="pm-nav-left"><span class="pm-nav-icon">🐷</span> John Pork Mode</span>
-            </button>
-            <button class="pm-nav-item" onclick="openPMSModal()" title="Export or Import all games using portable .PMS save file">
-              <span class="pm-nav-left"><span class="pm-nav-icon">💾</span> .PMS Saves</span>
-            </button>
-            <button class="pm-nav-item" id="random-btn" title="Play a random unblocked game">
-              <span class="pm-nav-left"><span class="pm-nav-icon">🎲</span> Surprise Me</span>
-            </button>
-            <button class="pm-nav-item" id="cloak-btn" title="Disguise this browser tab">
-              <span class="pm-nav-left"><span class="pm-nav-icon">🎭</span> Cloak Tab</span>
-            </button>
-            <button class="pm-nav-item panic-settings-trigger" onclick="openPanicModal()" title="Configure Panic Mode Destination URL">
-              <span class="pm-nav-left"><span class="pm-nav-icon">⚙️</span> Panic URL</span>
-            </button>
-          </nav>
-        </div>
       </div>
 
       <!-- Sidebar Footer -->
@@ -297,14 +272,6 @@
         });
       }
 
-      document.getElementById('random-btn').addEventListener('click', () => {
-        const rand = GAMES_DB[Math.floor(Math.random() * GAMES_DB.length)];
-        if (rand) window.location.href = rand.url;
-      });
-
-      document.getElementById('cloak-btn').addEventListener('click', () => {
-        cloakTabPrompt();
-      });
     }
 
     window.toggleSidebar = function() {
