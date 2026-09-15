@@ -102,7 +102,7 @@ export async function fetchCrimXUserProfile(uid, idToken = '') {
         avatarUrl: d.avatarUrl || d.photoURL || d.pfp || '',
         bannerUrl: d.bannerUrl || '',
         statusBio: d.statusBio || d.bio || '',
-        badges: d.badges || ['DoorAuth Verified']
+        badges: d.badges || ['Verified Player']
       };
     }
   } catch (e) {
@@ -155,7 +155,7 @@ window.onCrimXSignIn = async function(data) {
     photoURL: u.avatarUrl || u.photoURL || u.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
     bannerUrl: u.bannerUrl || '',
     statusBio: u.statusBio || '',
-    badges: u.badges || ['DoorAuth Verified'],
+    badges: u.badges || ['Verified Player'],
     doorAuth: true,
     token: token
   };
@@ -329,16 +329,12 @@ function updateCrimXUI(user) {
       </div>
     `;
   } else {
-    // Official CrimX DoorAuth Sign-In Widget (Standardized & Locked) + GitHub Pages Mirror
+    // Single clean Sign In button that opens the comprehensive sign in menu
     container.innerHTML = `
-      <div id="crimx-auth-widget" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <button type="button" id="crimx-signin-btn" class="crimx-signin-btn" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')" title="Sign in with CrimX via crimsonflame.net">
-          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
-          <span id="crimx-signin-label">Sign in with CrimX</span>
-        </button>
-        <button type="button" id="crimx-signin-gh-btn" class="crimx-signin-btn crimx-signin-gh-btn" onclick="triggerCrimXDoorAuth('https://crimsonflame-official.github.io')" title="Sign in with CrimX via crimsonflame-official.github.io">
-          <img src="https://crimsonflame-official.github.io/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
-          <span id="crimx-signin-gh-label">Sign in with CrimX (GH Mirror)</span>
+      <div id="crimx-auth-widget" style="display: inline-block;">
+        <button type="button" id="crimx-signin-btn" class="cm-btn cm-btn-yellow cm-btn-signin" onclick="openCrimXModal()" title="Sign in to your PluhMath account">
+          <span style="font-size: 0.95rem;">👤</span>
+          <span id="crimx-signin-label">Sign In</span>
         </button>
       </div>
     `;
@@ -361,7 +357,7 @@ function populateProfileCard(user) {
   const email = user.email || '';
   const banner = user.bannerUrl || '';
   const bio = user.statusBio || user.bio || '';
-  const badges = user.badges && user.badges.length ? user.badges : ['DoorAuth Verified'];
+  const badges = user.badges && user.badges.length ? user.badges : ['Verified Player'];
 
   if (nameEl) nameEl.textContent = name;
   if (handleEl) handleEl.textContent = handle;
@@ -1099,10 +1095,16 @@ function ensureCrimXModal() {
           </button>
         </div>
 
-        <button type="button" class="crimx-signin-btn" style="width:100%; justify-content:center;" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')">
-          <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
-          <span>Sign in with CrimX</span>
-        </button>
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <button type="button" class="crimx-signin-btn" style="width:100%; justify-content:center;" onclick="triggerCrimXDoorAuth('https://crimsonflame.net')" title="Sign in with CrimX via crimsonflame.net">
+            <img src="https://crimsonflame.net/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame-official.github.io/assets/crimx-logo.png'">
+            <span>Sign in with CrimX</span>
+          </button>
+          <button type="button" class="crimx-signin-btn crimx-signin-gh-btn" style="width:100%; justify-content:center;" onclick="triggerCrimXDoorAuth('https://crimsonflame-official.github.io')" title="Sign in with CrimX via crimsonflame-official.github.io mirror">
+            <img src="https://crimsonflame-official.github.io/assets/crimx-logo.png" alt="CrimX" class="crimx-btn-logo" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
+            <span>Sign in with CrimX (GH Mirror)</span>
+          </button>
+        </div>
       </div>
 
       <!-- TAB: Cloud Saves -->
@@ -1180,19 +1182,37 @@ window.handleCrimXEmailAuth = async function(e) {
 
 window.handleCrimXGoogleLogin = async function() {
   try {
+    if (window.location.protocol === 'file:') {
+      showToast('OAuth sign-in requires running on http/https (e.g. GitHub Pages or a web server), not file://', 'error');
+      return;
+    }
     await signInWithPopup(auth, googleProvider);
     closeCrimXModal();
   } catch (err) {
-    showToast(err.message.replace('Firebase: ', ''), 'error');
+    console.error("Google Auth Error:", err);
+    if (err.code === 'auth/invalid-continue-uri' || (err.message && err.message.includes('invalid-continue-uri'))) {
+      showToast('Domain not authorized in settings. Add your domain to Firebase Console > Authentication > Settings > Authorized domains.', 'error');
+    } else {
+      showToast(err.message.replace('Firebase: ', ''), 'error');
+    }
   }
 };
 
 window.handleCrimXMicrosoftLogin = async function() {
   try {
+    if (window.location.protocol === 'file:') {
+      showToast('OAuth sign-in requires running on http/https (e.g. GitHub Pages or a web server), not file://', 'error');
+      return;
+    }
     await signInWithPopup(auth, microsoftProvider);
     closeCrimXModal();
   } catch (err) {
-    showToast(err.message.replace('Firebase: ', ''), 'error');
+    console.error("Microsoft Auth Error:", err);
+    if (err.code === 'auth/invalid-continue-uri' || (err.message && err.message.includes('invalid-continue-uri'))) {
+      showToast('Domain not authorized in settings. Add your domain to Firebase Console > Authentication > Settings > Authorized domains.', 'error');
+    } else {
+      showToast(err.message.replace('Firebase: ', ''), 'error');
+    }
   }
 };
 
