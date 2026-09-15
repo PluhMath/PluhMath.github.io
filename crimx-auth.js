@@ -28,12 +28,13 @@ const CRIMX_CLIENT_ID = 'cf_client_843fbbf7d0caba';
 const DOORAUTH_ORIGIN = window.location.origin.includes('localhost') ? window.location.origin : 'https://crimsonflame.net';
 
 const CRIMX_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBSSJKDrFJ1_qlliZqgw34CY2TSaKOxxxM",
+  apiKey: "AIzaSyDLrhT0-eMnObUNOQk8CPvQRHNMogUmYro",
   authDomain: "plumath.firebaseapp.com",
   projectId: "plumath",
   storageBucket: "plumath.firebasestorage.app",
-  messagingSenderId: "406321213530",
-  appId: "1:406321213530:web:92d27a69d34d147393a863"
+  messagingSenderId: "581717942669",
+  appId: "1:581717942669:web:c6679f57bbc75ff8699dc4",
+  measurementId: "G-LZL13MLW1G"
 };
 
 // Initialize Firebase
@@ -1190,11 +1191,8 @@ window.handleCrimXGoogleLogin = async function() {
     closeCrimXModal();
   } catch (err) {
     console.error("Google Auth Error:", err);
-    if (err.code === 'auth/invalid-continue-uri' || (err.message && err.message.includes('invalid-continue-uri'))) {
-      showToast('Domain not authorized in settings. Add your domain to Firebase Console > Authentication > Settings > Authorized domains.', 'error');
-    } else {
-      showToast(err.message.replace('Firebase: ', ''), 'error');
-    }
+    const msg = err.message ? err.message.replace(/^Firebase:\s*/, '').replace(/\s*\([a-z0-9\/-]+\)\.?$/i, '') : 'Sign in failed';
+    showToast(msg, 'error');
   }
 };
 
@@ -1208,11 +1206,8 @@ window.handleCrimXMicrosoftLogin = async function() {
     closeCrimXModal();
   } catch (err) {
     console.error("Microsoft Auth Error:", err);
-    if (err.code === 'auth/invalid-continue-uri' || (err.message && err.message.includes('invalid-continue-uri'))) {
-      showToast('Domain not authorized in settings. Add your domain to Firebase Console > Authentication > Settings > Authorized domains.', 'error');
-    } else {
-      showToast(err.message.replace('Firebase: ', ''), 'error');
-    }
+    const msg = err.message ? err.message.replace(/^Firebase:\s*/, '').replace(/\s*\([a-z0-9\/-]+\)\.?$/i, '') : 'Sign in failed';
+    showToast(msg, 'error');
   }
 };
 
