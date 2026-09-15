@@ -73,24 +73,7 @@ const GAME_TITLES = {
 
 export async function fetchCrimXUserProfile(uid, idToken = '') {
   if (!uid) return null;
-  try {
-    const headers = { 'Accept': 'application/json' };
-    if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-
-    const res = await fetch(`https://crimx.crimsonflame.net/api/user/profile?uid=${encodeURIComponent(uid)}`, {
-      method: 'GET',
-      headers: headers
-    });
-    if (res.ok) {
-      const profile = await res.json();
-      console.debug('[CrimX Profile API] Successfully fetched profile for:', uid, profile);
-      return profile;
-    }
-  } catch (err) {
-    console.debug('[CrimX Profile API] Fetch non-critical fallback:', err);
-  }
-
-  // Fallback to Firestore profile document
+  // 1. Read directly from PluhMath Firestore users collection
   try {
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (userDoc.exists()) {
@@ -100,15 +83,30 @@ export async function fetchCrimXUserProfile(uid, idToken = '') {
         username: d.username || d.displayName || 'Player',
         displayName: d.displayName || d.username || 'Player',
         email: d.email || '',
-        avatarUrl: d.avatarUrl || d.photoURL || d.pfp || '',
+        avatarUrl: d.avatarUrl || d.photoURL || d.pfp || 'https://crimsonflame.net/assets/crimx-logo.png',
         bannerUrl: d.bannerUrl || '',
         statusBio: d.statusBio || d.bio || '',
         badges: d.badges || ['Verified Player']
       };
     }
   } catch (e) {
-    console.debug('[CrimX Profile] Firestore read error:', e);
+    console.debug('[PluhMath Profile] Firestore read error:', e);
   }
+
+  // 2. Fallback to API if available
+  try {
+    const headers = { 'Accept': 'application/json' };
+    if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+
+    const res = await fetch(`https://crimx.crimsonflame.net/api/user/profile?uid=${encodeURIComponent(uid)}`, {
+      method: 'GET',
+      headers: headers
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {}
+
   return null;
 }
 window.fetchCrimXUserProfile = fetchCrimXUserProfile;
@@ -473,7 +471,7 @@ export async function saveGameToCloud(gameId, data, gameTitle = '', indexedDBDat
 
   // 2. Offline check
   if (!navigator.onLine) {
-    showToast('Error: Unable to save. Saving when internet connection is restored', 'error');
+    showToast('Offline: Save stored in browser. Will sync to cloud when connected.', 'info');
     queueOfflineSave(cleanGameId, {
       gameId: cleanGameId,
       gameTitle: title,
@@ -485,40 +483,63 @@ export async function saveGameToCloud(gameId, data, gameTitle = '', indexedDBDat
     return false;
   }
 
-  if (!currentCrimXUser) {
-    console.debug('[CrimX] No user signed in. Saved to local cache only.');
+  if (!currentCrimXUser || !currentCrimXUser.uid) {
+    console.debug('[PluhMath Cloud Save] No user signed in. Saved to browser storage.');
     return false;
   }
 
   try {
+    // 3. Sanitize data so Firestore never receives undefined or unsupported objects
+    const sanitizedData = {};
+    if (data && typeof data === 'object') {
+      for (const [k, v] of Object.entries(data)) {
+        if (v !== undefined && v !== null) {
+          sanitizedData[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        }
+      }
+    }
+
     const payload = {
       gameId: cleanGameId,
       gameTitle: title,
-      data: data,
-      indexedDB: indexedDBData,
-      itemCount: typeof data === 'object' ? Object.keys(data).length : 1,
+      data: sanitizedData,
+      itemCount: Object.keys(sanitizedData).length,
       lastUpdated: serverTimestamp(),
       updatedAtIso: new Date().toISOString()
     };
 
-    const appRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath');
-    await setDoc(appRef, {
-      appName: 'PluhMath',
-      appId: 'pluhmath',
-      clientId: CRIMX_CLIENT_ID,
-      lastActive: serverTimestamp(),
-      updatedAtIso: new Date().toISOString()
-    }, { merge: true });
+    if (indexedDBData && typeof indexedDBData === 'object') {
+      try {
+        const idbString = JSON.stringify(indexedDBData);
+        if (idbString && idbString.length < 800000) {
+          payload.indexedDB = JSON.parse(idbString);
+        }
+      } catch (e) {}
+    }
 
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
+    // Save directly to PluhMath's Firestore: users/{uid}/saves/{cleanGameId}
+    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'saves', cleanGameId);
     await setDoc(saveRef, payload, { merge: true });
+
+    // Update user profile active state in PluhMath Firestore
+    try {
+      await setDoc(doc(db, 'users', currentCrimXUser.uid), {
+        lastActive: serverTimestamp(),
+        lastActiveGame: cleanGameId
+      }, { merge: true });
+    } catch (e) {}
 
     cloudSavesCache[cleanGameId] = payload;
     showToast(`☁️ Cloud Save synced for ${title}!`, 'success');
     return true;
   } catch (err) {
-    console.error('[CrimX Cloud Save] Failed to save to cloud:', err);
-    showToast('Error: Unable to save. Saving when internet connection is restored', 'error');
+    console.error('[PluhMath Cloud Save] Failed to save to Firestore:', err);
+    if (err.code === 'permission-denied') {
+      showToast('Cloud save permission denied. Verify Firestore rules in Firebase Console.', 'error');
+    } else {
+      const msg = err.message ? err.message.replace(/^Firebase:\s*/, '') : 'Saved to browser storage';
+      showToast(`Cloud save error: ${msg}`, 'error');
+    }
     queueOfflineSave(cleanGameId, {
       gameId: cleanGameId,
       gameTitle: title,
@@ -532,24 +553,26 @@ export async function saveGameToCloud(gameId, data, gameTitle = '', indexedDBDat
 }
 
 /**
- * Retrieve game state from cloud
+ * Retrieve game state from PluhMath Firestore
  */
 export async function loadGameFromCloud(gameId) {
-  if (!currentCrimXUser) return null;
+  if (!currentCrimXUser || !currentCrimXUser.uid) return null;
   const cleanGameId = String(gameId).toLowerCase().trim();
 
   try {
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
+    // 1. Direct PluhMath Firestore path: users/{uid}/saves/{cleanGameId}
+    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'saves', cleanGameId);
     let snap = await getDoc(saveRef);
 
-    // Fallback: check legacy path if present
+    // 2. Legacy fallback check
     if (!snap.exists()) {
-      const legacyRef = doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId);
-      const legacySnap = await getDoc(legacyRef);
-      if (legacySnap.exists()) {
-        snap = legacySnap;
-        await saveGameToCloud(cleanGameId, legacySnap.data().data, legacySnap.data().gameTitle);
-      }
+      try {
+        const legacyRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
+        const legacySnap = await getDoc(legacyRef);
+        if (legacySnap.exists()) {
+          snap = legacySnap;
+        }
+      } catch (e) {}
     }
 
     if (snap && snap.exists()) {
@@ -559,19 +582,20 @@ export async function loadGameFromCloud(gameId) {
     }
     return null;
   } catch (err) {
-    console.error('[CrimX Cloud Save] Failed to fetch cloud save:', err);
+    console.error('[PluhMath Cloud Save] Failed to fetch cloud save:', err);
     return null;
   }
 }
 
 /**
- * Fetch all cloud saves for the current user
+ * Fetch all cloud saves for the current user from PluhMath Firestore
  */
 export async function loadCloudSavesList() {
-  if (!currentCrimXUser) return [];
+  if (!currentCrimXUser || !currentCrimXUser.uid) return [];
 
   try {
-    const savesColl = collection(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves');
+    // 1. Direct PluhMath Firestore collection: users/{uid}/saves
+    const savesColl = collection(db, 'users', currentCrimXUser.uid, 'saves');
     const snap = await getDocs(savesColl);
     const list = [];
     snap.forEach(docSnap => {
@@ -580,9 +604,10 @@ export async function loadCloudSavesList() {
       cloudSavesCache[d.gameId] = d;
     });
 
+    // 2. Fallback check for legacy paths if empty
     if (list.length === 0) {
       try {
-        const legacyColl = collection(db, 'users', currentCrimXUser.uid, 'game_saves');
+        const legacyColl = collection(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves');
         const legSnap = await getDocs(legacyColl);
         legSnap.forEach(docSnap => {
           const d = docSnap.data();
@@ -594,28 +619,27 @@ export async function loadCloudSavesList() {
 
     return list;
   } catch (err) {
-    console.error('[CrimX Cloud Save] Failed to list saves:', err);
+    console.error('[PluhMath Cloud Save] Failed to list saves:', err);
     return [];
   }
 }
 
 /**
- * Delete a cloud save
+ * Delete a cloud save from PluhMath Firestore
  */
 export async function deleteGameCloudSave(gameId) {
-  if (!currentCrimXUser) return;
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
   const cleanGameId = String(gameId).toLowerCase().trim();
   try {
-    const saveRef = doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId);
-    await deleteDoc(saveRef);
+    await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'saves', cleanGameId));
     try {
-      await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'game_saves', cleanGameId));
+      await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId));
     } catch (e) {}
     delete cloudSavesCache[cleanGameId];
     showToast(`Deleted cloud save for ${GAME_TITLES[cleanGameId] || cleanGameId}`, 'info');
     renderCloudSavesListInModal();
   } catch (err) {
-    console.error('[CrimX Cloud Save] Delete failed:', err);
+    console.error('[PluhMath Cloud Save] Delete failed:', err);
   }
 }
 
@@ -1167,12 +1191,34 @@ window.handleCrimXEmailAuth = async function(e) {
   try {
     if (currentAuthSubTab === 'signup') {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      if (displayName && userCred.user) {
-        await updateProfile(userCred.user, { displayName: displayName });
+      const name = displayName || email.split('@')[0] || 'Player';
+      if (userCred.user) {
+        await updateProfile(userCred.user, { displayName: name });
+        try {
+          await setDoc(doc(db, 'users', userCred.user.uid), {
+            uid: userCred.user.uid,
+            username: name,
+            displayName: name,
+            email: email,
+            avatarUrl: 'https://crimsonflame.net/assets/crimx-logo.png',
+            badges: ['Verified Player'],
+            createdAt: serverTimestamp(),
+            lastActive: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.warn('[PluhMath Profile] Profile save non-critical:', e);
+        }
       }
       showToast('Account created successfully!', 'success');
     } else {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      if (userCred.user) {
+        try {
+          await setDoc(doc(db, 'users', userCred.user.uid), {
+            lastActive: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {}
+      }
       showToast('Signed in successfully!', 'success');
     }
     closeCrimXModal();
