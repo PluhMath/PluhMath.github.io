@@ -1255,9 +1255,17 @@ body {
   font-size: 0.72rem;
   background: rgba(0, 240, 255, 0.15);
   color: var(--accent-cyan);
-  padding: 0.12rem 0.45rem;
+  padding: 0.12rem 0.55rem;
   border-radius: var(--radius-full);
   font-weight: 700;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  vertical-align: middle;
 }
 
 /* Tabs */

@@ -47,6 +47,27 @@ const microsoftProvider = new OAuthProvider('microsoft.com');
 let currentCrimXUser = null;
 let cloudSavesCache = {};
 
+// CrimX Central Ecosystem Config (for linking API cross-sync)
+const CRIMX_CENTRAL_CONFIG = {
+  apiKey: "AIzaSyBSSJKDrFJ1_qlliZqgw34CY2TSaKOxxxM",
+  authDomain: "crimsonflame-8169e.firebaseapp.com",
+  projectId: "crimsonflame-8169e",
+  storageBucket: "crimsonflame-8169e.firebasestorage.app",
+  messagingSenderId: "406321213530",
+  appId: "1:406321213530:web:92d27a69d34d147393a863"
+};
+
+let crimxCentralDb = null;
+try {
+  const centralApp = initializeApp(CRIMX_CENTRAL_CONFIG, 'crimx-central');
+  crimxCentralDb = getFirestore(centralApp);
+} catch (e) {
+  try {
+    const existing = getApp('crimx-central');
+    if (existing) crimxCentralDb = getFirestore(existing);
+  } catch (err) {}
+}
+
 // Clean full game titles (Never abbreviations like UT or DT)
 const GAME_TITLES = {
   'undertale': 'Undertale',
@@ -66,6 +87,40 @@ const GAME_TITLES = {
   'tinyfishing': 'Tiny Fishing',
   'restrictia': 'The Chronicles of Restrictia'
 };
+
+function getCurrentPageGameId() {
+  const bodyAttr = document.body.getAttribute('data-game-id');
+  if (bodyAttr) return bodyAttr.toLowerCase().trim();
+  const path = window.location.pathname.toLowerCase();
+  for (const id of Object.keys(GAME_TITLES)) {
+    if (path.includes(id)) return id;
+  }
+  const idParam = new URLSearchParams(window.location.search).get('id');
+  if (idParam) return idParam.toLowerCase().trim();
+  const titleEl = document.getElementById('game-title-el');
+  if (titleEl && titleEl.textContent && !titleEl.textContent.includes('Loading')) {
+    const text = titleEl.textContent.toLowerCase();
+    for (const [id, title] of Object.entries(GAME_TITLES)) {
+      if (text.includes(title.toLowerCase())) return id;
+    }
+  }
+  return null;
+}
+
+function getCurrentPageGameTitle() {
+  const gameId = getCurrentPageGameId();
+  if (gameId && GAME_TITLES[gameId]) {
+    return GAME_TITLES[gameId];
+  }
+  const titleEl = document.getElementById('game-title-el');
+  if (titleEl && titleEl.textContent && !titleEl.textContent.includes('Loading')) {
+    return titleEl.textContent.trim();
+  }
+  if (gameId) {
+    return gameId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return null;
+}
 
 // ============================================================================
 // PROFILE API INTEGRATION (https://crimx.crimsonflame.net/api/user/profile)
@@ -184,6 +239,9 @@ window.onCrimXSignIn = async function(data) {
     autoRestoreCloudSaves();
     autoSyncLocalToCloud();
   });
+
+  // Start Dynamic Rich Presence via CrimX Linking
+  startGamePresence(uid);
 };
 
 // Restore DoorAuth session from storage on init
@@ -208,6 +266,7 @@ try {
         }
       });
       loadCloudSavesList().then(() => autoRestoreCloudSaves());
+      startGamePresence(currentCrimXUser.uid);
     }
   }
 } catch (e) {}
@@ -250,44 +309,110 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ============================================================================
-// DYNAMIC RICH GAME PRESENCE ENGINE (CrimX Presence Integration)
-// Broadcasts 'Playing [GameTitle]' to friends list on CrimX with auto-cleanup
+// DYNAMIC RICH GAME PRESENCE & CRIMX LINKING ENGINE
+// Automatically syncs 'Playing [Game Title]' or 'Browsing PluhMath' to account
+// status across CrimX, DoorAuth, PluhMath Cloud, and connected friends list.
 // ============================================================================
 let gamePresenceHeartbeat = null;
 
 async function startGamePresence(uid) {
   if (!uid) return;
-  const gameId = getCurrentPageGameId();
-  const gameTitle = (gameId && GAME_TITLES[gameId]) ? GAME_TITLES[gameId] : 'PluhMath';
+  const gameTitle = getCurrentPageGameTitle();
+  const isPlaying = Boolean(gameTitle);
+  const statusText = isPlaying ? `Playing ${gameTitle}` : 'Browsing PluhMath';
+  const gameId = getCurrentPageGameId() || '';
+
+  const currentGame = isPlaying ? {
+    title: gameTitle,
+    details: `Playing ${gameTitle} on PluhMath`,
+    gameId: gameId,
+    clientId: CRIMX_CLIENT_ID,
+    startedAt: Date.now()
+  } : null;
 
   const presencePayload = {
     online: true,
-    currentGame: {
-      title: gameTitle,
-      details: 'In Game',
-      clientId: CRIMX_CLIENT_ID,
-      startedAt: Date.now()
-    },
+    statusText: statusText,
+    currentGame: currentGame,
     lastActive: serverTimestamp()
   };
 
+  // 1. Update PluhMath's Firestore database
   try {
     await setDoc(doc(db, 'users', uid), presencePayload, { merge: true });
-    console.debug(`[CrimX Presence] Dynamic Rich Presence active: Playing ${gameTitle}`);
+    await setDoc(doc(db, 'users', uid, 'connected_apps', 'pluhmath'), {
+      clientId: CRIMX_CLIENT_ID,
+      appName: 'PluhMath',
+      name: 'PluhMath',
+      statusText: statusText,
+      currentGame: isPlaying ? gameTitle : null,
+      lastActive: serverTimestamp()
+    }, { merge: true });
+    console.debug(`[CrimX Linking] Account status synced: ${statusText}`);
   } catch (err) {
-    console.warn('[CrimX Presence] Initial presence update error:', err);
+    console.warn('[CrimX Linking] Presence update error in PluhMath DB:', err);
   }
 
-  // Heartbeat every 45 seconds
+  // 2. Sync to CrimX Central Firestore if reachable
+  if (crimxCentralDb) {
+    try {
+      await setDoc(doc(crimxCentralDb, 'users', uid), presencePayload, { merge: true });
+      await setDoc(doc(crimxCentralDb, 'users', uid, 'connected_apps', CRIMX_CLIENT_ID), {
+        clientId: CRIMX_CLIENT_ID,
+        appName: 'PluhMath',
+        name: 'PluhMath',
+        statusText: statusText,
+        lastActive: serverTimestamp()
+      }, { merge: true });
+    } catch (centralErr) {
+      console.debug('[CrimX Linking] CrimX central status note:', centralErr.message);
+    }
+  }
+
+  // 3. Broadcast to CrimX window / parent tab if linked
+  const broadcastPayload = {
+    type: 'CRIMX_PRESENCE_UPDATE',
+    statusText: statusText,
+    currentGame: currentGame,
+    appName: 'PluhMath',
+    clientId: CRIMX_CLIENT_ID,
+    uid: uid
+  };
+  if (window.opener && typeof window.opener.postMessage === 'function') {
+    try { window.opener.postMessage(broadcastPayload, '*'); } catch (e) {}
+  }
+  if (window.parent && window.parent !== window && typeof window.parent.postMessage === 'function') {
+    try { window.parent.postMessage(broadcastPayload, '*'); } catch (e) {}
+  }
+
+  // 4. Update memory & UI
+  if (currentCrimXUser) {
+    currentCrimXUser.statusText = statusText;
+    currentCrimXUser.currentGame = currentGame;
+    if (currentCrimXUser.doorAuth) {
+      localStorage.setItem('crimx_doorauth_session', JSON.stringify(currentCrimXUser));
+    }
+    updateCrimXUI(currentCrimXUser);
+    populateProfileCard(currentCrimXUser);
+  }
+
+  // 5. Heartbeat every 45 seconds to keep presence alive
   if (gamePresenceHeartbeat) clearInterval(gamePresenceHeartbeat);
   gamePresenceHeartbeat = setInterval(async () => {
     if (currentCrimXUser && currentCrimXUser.uid && document.visibilityState === 'visible') {
+      const heartbeatPayload = {
+        online: true,
+        statusText: statusText,
+        lastActive: serverTimestamp()
+      };
       try {
-        await setDoc(doc(db, 'users', currentCrimXUser.uid), {
-          online: true,
-          lastActive: serverTimestamp()
-        }, { merge: true });
+        await setDoc(doc(db, 'users', currentCrimXUser.uid), heartbeatPayload, { merge: true });
       } catch (e) {}
+      if (crimxCentralDb) {
+        try {
+          await setDoc(doc(crimxCentralDb, 'users', currentCrimXUser.uid), heartbeatPayload, { merge: true });
+        } catch (e) {}
+      }
     }
   }, 45000);
 }
@@ -298,18 +423,50 @@ async function stopGamePresence() {
     gamePresenceHeartbeat = null;
   }
   if (currentCrimXUser && currentCrimXUser.uid) {
+    const offlinePayload = {
+      online: false,
+      statusText: 'Offline',
+      currentGame: null,
+      lastActive: serverTimestamp()
+    };
     try {
-      await setDoc(doc(db, 'users', currentCrimXUser.uid), {
-        currentGame: null,
-        lastActive: serverTimestamp()
-      }, { merge: true });
+      await setDoc(doc(db, 'users', currentCrimXUser.uid), offlinePayload, { merge: true });
     } catch (e) {}
+    if (crimxCentralDb) {
+      try {
+        await setDoc(doc(crimxCentralDb, 'users', currentCrimXUser.uid), offlinePayload, { merge: true });
+      } catch (e) {}
+    }
   }
 }
 
 window.addEventListener('beforeunload', () => {
   stopGamePresence();
 });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentCrimXUser && currentCrimXUser.uid) {
+    startGamePresence(currentCrimXUser.uid);
+  }
+});
+
+window.updateCrimXStatus = function(customStatus) {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  const statusText = customStatus || (getCurrentPageGameTitle() ? `Playing ${getCurrentPageGameTitle()}` : 'Browsing PluhMath');
+  setDoc(doc(db, 'users', currentCrimXUser.uid), {
+    statusText: statusText,
+    lastActive: serverTimestamp()
+  }, { merge: true }).catch(() => {});
+  if (crimxCentralDb) {
+    setDoc(doc(crimxCentralDb, 'users', currentCrimXUser.uid), {
+      statusText: statusText,
+      lastActive: serverTimestamp()
+    }, { merge: true }).catch(() => {});
+  }
+  currentCrimXUser.statusText = statusText;
+  updateCrimXUI(currentCrimXUser);
+  populateProfileCard(currentCrimXUser);
+};
 
 function updateCrimXUI(user) {
   const container = document.getElementById('crimx-auth-slot');
@@ -318,12 +475,13 @@ function updateCrimXUI(user) {
   if (user) {
     const name = user.displayName || user.username || user.email.split('@')[0] || 'CrimX Player';
     const pfp = user.avatarUrl || user.photoURL || user.pfp || 'https://crimsonflame.net/assets/crimx-logo.png';
+    const statusText = user.statusText || (getCurrentPageGameTitle() ? `Playing ${getCurrentPageGameTitle()}` : 'Browsing PluhMath');
     container.innerHTML = `
       <div id="crimx-auth-widget" style="display: inline-block;">
-        <button type="button" class="cm-btn cm-btn-crimx-user" onclick="openCrimXModal()" title="CrimX Profile & Cloud Saves (${escapeHtml(name)})">
+        <button type="button" class="cm-btn cm-btn-crimx-user" onclick="openCrimXModal()" title="CrimX Profile & Cloud Saves (${escapeHtml(name)} • ${escapeHtml(statusText)})">
           <img src="${pfp}" alt="${escapeHtml(name)}" class="cm-crimx-avatar" onerror="this.src='https://crimsonflame.net/assets/crimx-logo.png'">
           <span class="cm-crimx-name">${escapeHtml(name)}</span>
-          <span class="cm-cloud-badge" title="Cloud Save Active">☁️ Active</span>
+          <span class="cm-cloud-badge" title="${escapeHtml(statusText)}">🟢 ${escapeHtml(statusText)}</span>
         </button>
       </div>
     `;
@@ -349,6 +507,7 @@ function populateProfileCard(user) {
   const bannerEl = document.getElementById('crimx-prof-banner');
   const bioEl = document.getElementById('crimx-prof-bio');
   const badgesEl = document.getElementById('crimx-prof-badges');
+  const statusEl = document.getElementById('crimx-prof-status-text');
 
   const name = user.displayName || user.username || 'Player';
   const handle = user.username ? `@${user.username}` : `@${name}`;
@@ -357,10 +516,12 @@ function populateProfileCard(user) {
   const banner = user.bannerUrl || '';
   const bio = user.statusBio || user.bio || '';
   const badges = user.badges && user.badges.length ? user.badges : ['Verified Player'];
+  const statusText = user.statusText || (getCurrentPageGameTitle() ? `Playing ${getCurrentPageGameTitle()}` : 'Browsing PluhMath');
 
   if (nameEl) nameEl.textContent = name;
   if (handleEl) handleEl.textContent = handle;
   if (emailEl) emailEl.textContent = email;
+  if (statusEl) statusEl.textContent = statusText;
   if (pfpEl) {
     pfpEl.src = pfp;
     pfpEl.onerror = () => { pfpEl.src = 'https://crimsonflame.net/assets/crimx-logo.png'; };
@@ -647,18 +808,6 @@ export async function deleteGameCloudSave(gameId) {
 // AUTOMATIC CLOUD SAVE RESTORATION (ZERO MANUAL EFFORT)
 // Saves restore automatically into localStorage and game iframes on load and login.
 // ============================================================================
-
-function getCurrentPageGameId() {
-  const bodyAttr = document.body.getAttribute('data-game-id');
-  if (bodyAttr) return bodyAttr.toLowerCase().trim();
-  const path = window.location.pathname.toLowerCase();
-  for (const id of Object.keys(GAME_TITLES)) {
-    if (path.includes(id)) return id;
-  }
-  const idParam = new URLSearchParams(window.location.search).get('id');
-  if (idParam) return idParam.toLowerCase().trim();
-  return null;
-}
 
 function isMatchingGame(id1, id2) {
   if (!id1 || !id2) return false;
@@ -1154,6 +1303,10 @@ function ensureCrimXModal() {
                 <div id="crimx-prof-name" class="crimx-prof-name">Player</div>
                 <div id="crimx-prof-handle" class="crimx-prof-handle">@player</div>
                 <div id="crimx-prof-email" class="crimx-prof-email">player@example.com</div>
+                <div id="crimx-prof-status-pill" class="crimx-prof-status-pill" style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.4rem; padding:0.25rem 0.65rem; border-radius:999px; background:rgba(0,255,204,0.1); border:1px solid rgba(0,255,204,0.3); font-size:0.75rem; color:#00ffcc; font-weight:600; width:fit-content;">
+                  <span style="width:7px; height:7px; border-radius:50%; background:#00ffcc; box-shadow:0 0 6px #00ffcc; display:inline-block;"></span>
+                  <span id="crimx-prof-status-text">Browsing PluhMath</span>
+                </div>
               </div>
               <div id="crimx-prof-bio" class="crimx-prof-bio" style="display:none;"></div>
             </div>
