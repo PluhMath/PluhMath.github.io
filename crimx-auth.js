@@ -825,6 +825,23 @@ function injectRestoredSaveToGame(gameId, data) {
   if (!iframe || !iframe.contentWindow) return;
 
   try {
+    // 1. Direct same-origin iframe localStorage injection (Run 3, Drift Boss, Tiny Fishing, etc.)
+    try {
+      if (iframe.contentWindow.localStorage && data && typeof data === 'object') {
+        for (const [k, v] of Object.entries(data)) {
+          if (!k.startsWith('__bridge_')) {
+            iframe.contentWindow.localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+          }
+        }
+      }
+    } catch (crossErr) {}
+
+    // 2. PluhSaveBridge deep restore (handles IndexedDB, localStorage, and game bridge)
+    if (window.PluhSaveBridge && typeof window.PluhSaveBridge.restoreAllSaveDataForGame === 'function') {
+      window.PluhSaveBridge.restoreAllSaveDataForGame(gameId, data).catch(() => {});
+    }
+
+    // 3. PostMessage bridge (for Undertale, Deltarune, and frame postMessage listeners)
     iframe.contentWindow.postMessage({
       type: 'initialSaveDataResponse',
       messageId: 'auto_restore_' + Date.now(),
@@ -904,16 +921,125 @@ export async function autoRestoreCloudSaves() {
 }
 
 // ============================================================================
-// IFRAME POSTMESSAGE BRIDGE (Direct hook for Undertale & Deltarune savesync.js)
+// UNIVERSAL MULTI-GAME SAVE ENGINE & POSTMESSAGE BRIDGE
+// Supports Run 3, Drift Boss, Tiny Fishing, Geometry Dash, Undertale,
+// Deltarune, Undertale Yellow, PluhShooter, PluhUs, Restrictia, and custom games.
 // ============================================================================
 
+const SUPPORTED_GAMES_SAVES = [
+  {
+    id: 'run3',
+    title: 'Run 3',
+    icon: '🏃‍♂️',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('run3') || l.includes('run_3') || l.startsWith('openfl') || l.includes('lastusername') || l.includes('run3_backup') || l.startsWith('so:');
+    }
+  },
+  {
+    id: 'drift-boss',
+    title: 'Drift Boss',
+    icon: '🏎️',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('drift') || l.startsWith('c2drift') || l.startsWith('c2_') || l.includes('driftboss');
+    }
+  },
+  {
+    id: 'tiny-fishing',
+    title: 'Tiny Fishing',
+    icon: '🎣',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('fish') || l.includes('tiny') || l.startsWith('tf_') || l.includes('upgrade');
+    }
+  },
+  {
+    id: 'geometry-dash',
+    title: 'Geometry Dash Subzero',
+    icon: '🔺',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.startsWith('gd_') || l.includes('geometry') || l.includes('subzero');
+    }
+  },
+  {
+    id: 'undertale',
+    title: 'Undertale',
+    icon: '❤️',
+    match: (k) => k.startsWith('ut') || k.startsWith('undertale') || (k.startsWith('file') && !k.startsWith('file_dr'))
+  },
+  {
+    id: 'deltarune',
+    title: 'Deltarune',
+    icon: '🔷',
+    match: (k) => k.startsWith('dr') || k.startsWith('deltarune') || k.includes('true_ch')
+  },
+  {
+    id: 'undertale-yellow',
+    title: 'Undertale Yellow',
+    icon: '🤠',
+    match: (k) => k.startsWith('uty') || k.includes('yellow')
+  },
+  {
+    id: 'pluhshooter',
+    title: 'PluhShooter.io',
+    icon: '🔫',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('pluhshooter') || l.startsWith('ps_');
+    }
+  },
+  {
+    id: 'pluhus',
+    title: 'PluhUs',
+    icon: '🚀',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('pluhus') || l.includes('among');
+    }
+  },
+  {
+    id: 'restrictia',
+    title: 'The Chronicles of Restrictia',
+    icon: '⚔️',
+    match: (k) => {
+      const l = k.toLowerCase();
+      return l.includes('restrictia') || l.includes('tcor') || l.includes('island_overdrive');
+    }
+  }
+];
+
+const GAME_ICONS = {
+  'undertale': '❤️',
+  'ut': '❤️',
+  'deltarune': '🔷',
+  'dr': '🔷',
+  'undertale-yellow': '🤠',
+  'uty': '🤠',
+  'run3': '🏃‍♂️',
+  'run-3': '🏃‍♂️',
+  'drift-boss': '🏎️',
+  'driftboss': '🏎️',
+  'tiny-fishing': '🎣',
+  'tinyfishing': '🎣',
+  'geometry-dash': '🔺',
+  'gd': '🔺',
+  'pluhshooter': '🔫',
+  'pluhshooter-io': '🔫',
+  'pluhus': '🚀',
+  'restrictia': '⚔️'
+};
+
+// 1. Hook PostMessage bridge from games
 window.addEventListener('message', async (event) => {
   const data = event.data;
   if (!data || typeof data !== 'object') return;
 
-  // 1. Game iframe notifies parent that save data changed (Undertale / Deltarune)
+  // Game iframe notifies parent that save data changed
   if (data.type === 'saveDataChanged') {
-    const gameId = (data.gameId || 'ut').toLowerCase();
+    const rawGameId = data.gameId || getCurrentPageGameId() || 'ut';
+    const gameId = rawGameId.toLowerCase();
     const savePayload = data.allLocalStorageData || {};
     console.debug('[CrimX Bridge] Received saveDataChanged from game:', gameId, savePayload);
 
@@ -925,15 +1051,14 @@ window.addEventListener('message', async (event) => {
     }
 
     if (currentCrimXUser) {
-      await saveGameToCloud(gameId, savePayload);
-    } else {
-      console.debug('[CrimX Bridge] Save changed locally. Sign in with CrimX DoorAuth to backup to cloud.');
+      await saveGameToCloud(gameId, savePayload, GAME_TITLES[gameId] || gameId);
     }
   }
 
-  // 2. Game iframe requests initial save data on startup
+  // Game iframe requests initial save data on startup
   if (data.type === 'getInitialSaveData') {
-    const gameId = (data.gameId || 'ut').toLowerCase();
+    const rawGameId = data.gameId || getCurrentPageGameId() || 'ut';
+    const gameId = rawGameId.toLowerCase();
     const messageId = data.messageId;
     console.debug('[CrimX Bridge] Game requested initial save data:', gameId, messageId);
 
@@ -948,16 +1073,17 @@ window.addEventListener('message', async (event) => {
             localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
           }
         }
-        showToast(`☁️ Automatically restored ${GAME_TITLES[gameId] || gameId} save from cloud!`, 'success');
+        showToast(`☁️ Restored ${GAME_TITLES[gameId] || gameId} save from cloud!`, 'success');
       }
     }
 
     // Fallback: If no cloud save found or not signed in, check existing localStorage
     if (!saveToReturn) {
       saveToReturn = {};
+      const gameMatcher = SUPPORTED_GAMES_SAVES.find(g => g.id === gameId || isMatchingGame(g.id, gameId));
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith(gameId) || k.startsWith('ut') || k.startsWith('dr') || k.startsWith('file'))) {
+        if (k && (k.startsWith(gameId) || (gameMatcher && gameMatcher.match(k)) || k.startsWith('file'))) {
           saveToReturn[k] = localStorage.getItem(k);
         }
       }
@@ -975,32 +1101,169 @@ window.addEventListener('message', async (event) => {
   }
 });
 
-// Auto-sync any known local keys to cloud for all games
-function autoSyncLocalToCloud() {
-  if (!currentCrimXUser) return;
+// 2. Hook PluhSaveBridge events for continuous saves across Run 3, Drift Boss, Tiny Fishing, etc.
+window.addEventListener('pluhmath-save-changed', async (event) => {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  const detail = event.detail;
+  if (!detail || !detail.gameId) return;
+  const gameId = detail.gameId;
+  const localData = detail.localStorage || detail.data || {};
+  const idbData = detail.indexedDB || null;
+  const title = detail.gameTitle || GAME_TITLES[gameId] || gameId;
 
-  // Undertale / Deltarune prefix keys in localStorage
-  const utKeys = {};
-  const drKeys = {};
-  const utyKeys = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (key.startsWith('ut') && !key.startsWith('uty')) utKeys[key] = localStorage.getItem(key);
-    if (key.startsWith('dr')) drKeys[key] = localStorage.getItem(key);
-    if (key.startsWith('uty') || key.includes('yellow')) utyKeys[key] = localStorage.getItem(key);
+  if (Object.keys(localData).length > 0 || idbData) {
+    console.debug(`[PluhCloud] Auto-syncing live progress for ${title}...`);
+    await saveGameToCloud(gameId, localData, title, idbData);
+  }
+});
+
+// 3. Hook .PMS file imports to immediately backup to cloud
+window.addEventListener('pluhmath-pms-restored', async (event) => {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  const detail = event.detail;
+  if (!detail || !detail.gameId) return;
+  const gameId = detail.gameId;
+  const data = detail.data || {};
+  const title = GAME_TITLES[gameId] || gameId;
+  await saveGameToCloud(gameId, data, title);
+});
+
+// 4. Auto-sync all known local saves to cloud for ALL games
+export async function autoSyncLocalToCloud() {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+
+  // Check active game iframe first (captures Run 3, Drift Boss, Tiny Fishing if in frame)
+  const activeGame = getCurrentPageGameId();
+  if (activeGame) {
+    const iframe = document.getElementById('game-iframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        const frameStorage = iframe.contentWindow.localStorage;
+        if (frameStorage && frameStorage.length > 0) {
+          const framePayload = {};
+          for (let i = 0; i < frameStorage.length; i++) {
+            const k = frameStorage.key(i);
+            if (k && !k.startsWith('__bridge_')) {
+              const val = frameStorage.getItem(k);
+              framePayload[k] = val;
+              localStorage.setItem(k, val);
+            }
+          }
+          if (Object.keys(framePayload).length > 0) {
+            await saveGameToCloud(activeGame, framePayload, GAME_TITLES[activeGame] || activeGame);
+          }
+        }
+      } catch (e) {}
+    }
   }
 
-  if (Object.keys(utKeys).length > 0 && !cloudSavesCache['ut']) {
-    saveGameToCloud('ut', utKeys, 'Undertale');
-  }
-  if (Object.keys(drKeys).length > 0 && !cloudSavesCache['dr']) {
-    saveGameToCloud('dr', drKeys, 'Deltarune');
-  }
-  if (Object.keys(utyKeys).length > 0 && !cloudSavesCache['undertale-yellow']) {
-    saveGameToCloud('undertale-yellow', utyKeys, 'Undertale Yellow');
+  // Scan parent window localStorage for all supported games
+  for (const gameConfig of SUPPORTED_GAMES_SAVES) {
+    const gameKeys = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (gameConfig.match(key)) {
+        gameKeys[key] = localStorage.getItem(key);
+      }
+    }
+
+    if (Object.keys(gameKeys).length > 0) {
+      await saveGameToCloud(gameConfig.id, gameKeys, gameConfig.title);
+    }
   }
 }
+
+// 5. Manual instant Cloud Sync function for active game
+window.syncActiveGameToCloud = async function() {
+  const activeGame = getCurrentPageGameId();
+  if (!activeGame) {
+    showToast('Not currently on a game page. Syncing all local saves...', 'info');
+    await autoSyncLocalToCloud();
+    return;
+  }
+
+  const title = GAME_TITLES[activeGame] || activeGame;
+  const iframe = document.getElementById('game-iframe');
+  const payload = {};
+
+  if (iframe && iframe.contentWindow) {
+    try {
+      const frameStorage = iframe.contentWindow.localStorage;
+      if (frameStorage) {
+        for (let i = 0; i < frameStorage.length; i++) {
+          const k = frameStorage.key(i);
+          if (k && !k.startsWith('__bridge_')) {
+            payload[k] = frameStorage.getItem(k);
+            localStorage.setItem(k, payload[k]);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  const cfg = SUPPORTED_GAMES_SAVES.find(g => g.id === activeGame || isMatchingGame(g.id, activeGame));
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && ((cfg && cfg.match(k)) || k.startsWith(activeGame))) {
+      payload[k] = localStorage.getItem(k);
+    }
+  }
+
+  if (Object.keys(payload).length > 0) {
+    await saveGameToCloud(activeGame, payload, title);
+    showToast(`☁️ ${title} progress successfully synced to Cloud!`, 'success');
+  } else {
+    showToast(`No local save data found for ${title} yet. Play a bit first!`, 'info');
+  }
+};
+
+// 6. Periodic background autosave for active game every 15s
+setInterval(async () => {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  const activeGame = getCurrentPageGameId();
+  if (!activeGame) return;
+
+  const iframe = document.getElementById('game-iframe');
+  if (iframe && iframe.contentWindow) {
+    try {
+      const frameStorage = iframe.contentWindow.localStorage;
+      if (frameStorage && frameStorage.length > 0) {
+        const frameData = {};
+        for (let i = 0; i < frameStorage.length; i++) {
+          const k = frameStorage.key(i);
+          if (k && !k.startsWith('__bridge_')) {
+            frameData[k] = frameStorage.getItem(k);
+          }
+        }
+        if (Object.keys(frameData).length > 0) {
+          await saveGameToCloud(activeGame, frameData, GAME_TITLES[activeGame] || activeGame);
+        }
+      }
+    } catch (e) {}
+  }
+}, 15000);
+
+// 7. Flush active game save on unload
+window.addEventListener('beforeunload', () => {
+  const activeGame = getCurrentPageGameId();
+  if (activeGame && currentCrimXUser) {
+    const iframe = document.getElementById('game-iframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        const frameStorage = iframe.contentWindow.localStorage;
+        if (frameStorage) {
+          for (let i = 0; i < frameStorage.length; i++) {
+            const k = frameStorage.key(i);
+            if (!k.startsWith('__bridge_')) {
+              localStorage.setItem(k, frameStorage.getItem(k));
+            }
+          }
+        }
+      } catch (e) {}
+    }
+  }
+});
 
 // ============================================================================
 // MODAL & UI CONTROLS
@@ -1058,12 +1321,19 @@ async function renderCloudSavesListInModal() {
 
   container.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-dim);">Loading cloud saves...</div>`;
   const saves = await loadCloudSavesList();
+  const curGame = getCurrentPageGameId();
+  const curGameTitle = curGame ? (GAME_TITLES[curGame] || curGame) : null;
 
   if (!saves || saves.length === 0) {
     container.innerHTML = `
       <div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); border:1px dashed var(--border-subtle);">
         <p style="margin-bottom:0.4rem; color:#fff; font-weight:600;">No Cloud Saves Found</p>
-        <p style="font-size:0.82rem; margin:0;">Play Undertale, Deltarune, or any game while signed in. Your saves automatically backup to the cloud!</p>
+        <p style="font-size:0.82rem; margin:0 0 1rem 0;">Play Run 3, Drift Boss, Tiny Fishing, Undertale, or any game while signed in. Your saves automatically backup to the cloud!</p>
+        ${curGameTitle ? `
+          <button class="cm-btn cm-btn-yellow" style="font-size:0.82rem; padding:0.5rem 1rem; margin:0 auto;" onclick="syncActiveGameToCloud()">
+            ⚡ Backup ${escapeHtml(curGameTitle)} Now
+          </button>
+        ` : ''}
       </div>
     `;
     return;
@@ -1075,24 +1345,30 @@ async function renderCloudSavesListInModal() {
         <div style="font-weight:700; color:#fff; font-size:0.92rem;">Active Cloud Backups</div>
         <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Dedicated saves per game • Protected against cache clearing</div>
       </div>
-      <div style="display:flex; gap:0.5rem;">
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        ${curGameTitle ? `
+          <button class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="syncActiveGameToCloud()" title="Backup current game progress">
+            ⚡ Backup ${escapeHtml(curGameTitle)}
+          </button>
+        ` : ''}
         <button class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="restoreAllCloudSaves()" title="Restore all game saves at once">
           📥 Restore All
         </button>
-        <button class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all current local saves">
+        <button class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all local game saves">
           ☁️ Backup All
         </button>
       </div>
     </div>
   ` + saves.map(s => {
     const title = s.gameTitle || GAME_TITLES[s.gameId] || s.gameId;
+    const icon = GAME_ICONS[s.gameId] || '🎮';
     const dateStr = s.updatedAtIso ? new Date(s.updatedAtIso).toLocaleString() : 'Recently';
-    const items = s.itemCount ? `${s.itemCount} files` : 'Save Data';
+    const items = s.itemCount ? `${s.itemCount} items` : 'Save Data';
 
     return `
       <div class="crimx-save-item">
         <div class="crimx-save-meta">
-          <div class="crimx-save-title">🎮 ${escapeHtml(title)}</div>
+          <div class="crimx-save-title">${icon} ${escapeHtml(title)}</div>
           <div class="crimx-save-sub">Synced: ${dateStr} • ${items}</div>
         </div>
         <div class="crimx-save-actions">

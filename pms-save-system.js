@@ -21,8 +21,11 @@
     'run3': {
       title: 'Run 3',
       filename: 'run3.pms',
-      prefixes: ['run3', 'run_3'],
-      matcher: (k) => k.toLowerCase().includes('run3') || k.toLowerCase().includes('run_3')
+      prefixes: ['run3', 'run_3', 'openfl', 'lastusername'],
+      matcher: (k) => {
+        const l = k.toLowerCase();
+        return l.includes('run3') || l.includes('run_3') || l.startsWith('openfl') || l.includes('lastusername') || l.includes('run3_backup');
+      }
     },
     'pluhshooter': {
       title: 'PluhShooter.io',
@@ -33,8 +36,8 @@
     'geometry-dash': {
       title: 'Geometry Dash Subzero',
       filename: 'geometry-dash.pms',
-      prefixes: ['gd_', 'geometrydash'],
-      matcher: (k) => k.startsWith('gd_') || k.toLowerCase().includes('geometry')
+      prefixes: ['gd_', 'geometrydash', 'subzero'],
+      matcher: (k) => k.startsWith('gd_') || k.toLowerCase().includes('geometry') || k.toLowerCase().includes('subzero')
     },
     'pluhus': {
       title: 'PluhUs',
@@ -45,8 +48,11 @@
     'drift-boss': {
       title: 'Drift Boss',
       filename: 'drift-boss.pms',
-      prefixes: ['driftboss', 'c2drift'],
-      matcher: (k) => k.toLowerCase().includes('drift')
+      prefixes: ['driftboss', 'c2drift', 'c2_'],
+      matcher: (k) => {
+        const l = k.toLowerCase();
+        return l.includes('drift') || l.startsWith('c2_') || l.startsWith('c2drift');
+      }
     },
     'undertale-yellow': {
       title: 'Undertale Yellow',
@@ -57,8 +63,11 @@
     'tiny-fishing': {
       title: 'Tiny Fishing',
       filename: 'tiny-fishing.pms',
-      prefixes: ['tiny_fishing', 'tinyfishing'],
-      matcher: (k) => k.toLowerCase().includes('fish') || k.toLowerCase().includes('tiny')
+      prefixes: ['tiny_fishing', 'tinyfishing', 'tf_'],
+      matcher: (k) => {
+        const l = k.toLowerCase();
+        return l.includes('fish') || l.includes('tiny') || l.startsWith('tf_') || l.includes('upgrade');
+      }
     }
   };
 
