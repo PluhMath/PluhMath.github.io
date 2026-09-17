@@ -6,8 +6,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initGamePage() {
+  // Check for community game query parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const communityId = urlParams.get('community') || (urlParams.get('id') && urlParams.get('id').startsWith('community_') ? urlParams.get('id').replace('community_', '') : null);
+
+  if (communityId) {
+    loadCommunityGamePage(communityId);
+    return;
+  }
+
   // Determine game from page attribute or URL query
-  const pageGameId = document.body.dataset.gameId || new URLSearchParams(window.location.search).get('id') || 'undertale';
+  const pageGameId = document.body.dataset.gameId || urlParams.get('id') || 'undertale';
   const game = getGameById(pageGameId) || GAMES_DB[0];
 
   document.body.dataset.gameId = game.id;
@@ -183,6 +192,130 @@ function setupRatingButtons(gameId) {
         state = 'dislike';
       }
     });
+  }
+}
+
+// ============================================================================
+// PLUHCOMMUNITY GAME LOADER
+// ============================================================================
+
+async function loadCommunityGamePage(communityId) {
+  document.body.dataset.gameId = `community_${communityId}`;
+  const titleEl = document.getElementById('game-title-el');
+  const breadcrumbEl = document.getElementById('game-title-breadcrumb');
+  const descEl = document.getElementById('game-desc-el');
+  const howToPlayEl = document.getElementById('game-howtoplay-el');
+  const controlsGrid = document.getElementById('controls-grid');
+  const frame = document.getElementById('game-iframe');
+  const authorBadge = document.getElementById('game-author-badge');
+  const promoteBtn = document.getElementById('promote-btn');
+
+  if (titleEl) titleEl.textContent = 'Loading PluhCommunity Game...';
+
+  // Wait for PluhCommunity helper if needed
+  let retries = 0;
+  while ((!window.PluhCommunity || !window.PluhCommunity.fetchCommunityGameById) && retries < 25) {
+    await new Promise(r => setTimeout(r, 100));
+    retries++;
+  }
+
+  let game = null;
+  if (window.PluhCommunity && window.PluhCommunity.fetchCommunityGameById) {
+    game = await window.PluhCommunity.fetchCommunityGameById(communityId);
+  }
+
+  if (!game) {
+    if (titleEl) titleEl.textContent = 'Game Not Found';
+    if (descEl) descEl.textContent = 'This community creation may have been deleted or is currently unavailable.';
+    return;
+  }
+
+  // Populate metadata
+  if (titleEl) titleEl.textContent = game.title;
+  if (breadcrumbEl) breadcrumbEl.textContent = game.title;
+  document.title = `${game.title} — Play Free on PluhCommunity`;
+
+  if (authorBadge) {
+    authorBadge.textContent = `by @${game.authorName || 'Pluher'}`;
+    authorBadge.style.display = 'inline-block';
+  }
+
+  if (promoteBtn) {
+    promoteBtn.style.display = 'inline-block';
+    promoteBtn.textContent = game.promoted ? '⭐ Remove from Main' : '🌟 Promote to Main';
+    window.handlePromoteActiveGame = async function() {
+      try {
+        const isPromoted = await window.PluhCommunity.togglePromoteToCatalog(communityId);
+        promoteBtn.textContent = isPromoted ? '⭐ Remove from Main' : '🌟 Promote to Main';
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(isPromoted ? '🌟 Promoted to Main PluhMath Catalogue!' : 'Removed from Main Catalogue', 'success');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+  }
+
+  if (descEl) descEl.textContent = game.description || 'A web game created by the PluhMath community.';
+  if (howToPlayEl) howToPlayEl.textContent = game.howToPlay || 'Use standard keyboard and mouse controls to play.';
+
+  if (controlsGrid) {
+    const ctrls = Array.isArray(game.controls) && game.controls.length > 0
+      ? game.controls
+      : [{ key: 'Mouse & Keyboard', desc: 'Interact with game' }];
+    controlsGrid.innerHTML = ctrls.map(c => `
+      <div class="cm-control-item">
+        <span class="cm-key">${c.key}</span>
+        <span style="font-size:0.9rem; color:var(--cm-text-light);">${c.desc}</span>
+      </div>
+    `).join('');
+  }
+
+  // Set frame source
+  if (frame) {
+    if (game.gameSourceType === 'html' && game.htmlContent) {
+      frame.removeAttribute('src');
+      frame.srcdoc = game.htmlContent;
+    } else if (game.gameUrl) {
+      frame.src = game.gameUrl;
+    }
+  }
+
+  // Likes & Stars rating
+  const likeBtn = document.getElementById('like-btn');
+  const likeCount = document.getElementById('like-count');
+  if (likeBtn && likeCount) {
+    const isStarred = window.PluhCommunity.isGameStarred ? window.PluhCommunity.isGameStarred(communityId) : false;
+    let stars = game.stars || 0;
+    likeCount.textContent = `${stars} Star${stars === 1 ? '' : 's'}`;
+    if (isStarred) likeBtn.style.color = '#fbbf24';
+
+    likeBtn.onclick = async () => {
+      if (window.PluhCommunity && window.PluhCommunity.toggleStarCommunityGame) {
+        const starred = await window.PluhCommunity.toggleStarCommunityGame(communityId);
+        stars = starred ? stars + 1 : Math.max(0, stars - 1);
+        likeCount.textContent = `${stars} Star${stars === 1 ? '' : 's'}`;
+        likeBtn.style.color = starred ? '#fbbf24' : '';
+      }
+    };
+  }
+
+  // Increment play count
+  if (window.PluhCommunity && window.PluhCommunity.incrementGamePlayCount) {
+    window.PluhCommunity.incrementGamePlayCount(communityId);
+  }
+
+  // Update CrimX Rich Game Presence
+  setTimeout(() => {
+    if (window.updateCrimXStatus) {
+      window.updateCrimXStatus(`Playing ${game.title}`);
+    }
+  }, 1000);
+
+  // Cloak state restore
+  const savedCloak = localStorage.getItem('pluhmath_cloak');
+  if (savedCloak && savedCloak !== 'default') {
+    applyCloak(savedCloak);
   }
 }
 

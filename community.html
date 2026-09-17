@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ057VF3NC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QZ057VF3NC');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PluhCommunity — Play & Publish Community Web Games</title>
+  <meta name="description" content="Discover, play, and publish community web games on PluhCommunity. Upload custom games, earn stars, and get featured in the main PluhMath catalogue.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23f59e0b%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>★</text></svg>">
+  <link rel="stylesheet" href="coolmath.css">
+</head>
+<body data-page="community">
+
+  <!-- Top Info Bar -->
+  <div class="cm-topbar">
+    <div class="cm-topbar-links">
+      <span>🌟 PluhCommunity Hub</span>
+      <span>•</span>
+      <span>Player-Created Games</span>
+      <span>•</span>
+      <span>Publish Web Links & HTML5 Games</span>
+    </div>
+    <div class="cm-topbar-links">
+      <a href="index.html" style="color:var(--accent-cyan); text-decoration:none; font-weight:700;">← Official Catalogue</a>
+      <span>•</span>
+      <span>Panic: <kbd style="background:#000; color:#00f0ff; padding:1px 5px; border-radius:3px;">]</kbd></span>
+    </div>
+  </div>
+
+  <!-- Navigation Header -->
+  <header class="cm-navbar">
+    <div style="display:flex; align-items:center; gap:0.9rem;">
+      <button class="pm-sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar Navigation" aria-label="Toggle Sidebar">
+        ☰
+      </button>
+      <a class="cm-logo" href="index.html" title="PluhMath Home">
+        <div class="cm-logo-box">∑</div>
+        <div class="cm-logo-text">
+          <span class="cm-logo-main">PLUHMATH</span>
+          <span class="cm-logo-sub" style="color:var(--accent-yellow);">Community</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="cm-search-wrapper">
+      <input type="text" id="community-search-input" class="cm-search-input" placeholder="Search community games or @creators..." autocomplete="off">
+      <button class="cm-search-btn" title="Search">🔍</button>
+    </div>
+
+    <!-- Right Header Actions -->
+    <div class="cm-header-actions">
+      <button type="button" class="cm-btn cm-btn-yellow" onclick="window.PluhCommunity.openPublisherModal()" style="font-weight:800;" title="Publish your own game">
+        <span>🚀</span> + Publish Game
+      </button>
+      <div id="crimx-auth-slot"></div>
+      <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
+        🚨 Panic
+      </button>
+    </div>
+  </header>
+
+  <!-- App Layout with Modern Sidebar -->
+  <div class="pm-app-layout">
+    <!-- Backdrop for mobile drawer -->
+    <div class="pm-backdrop" id="pm-backdrop" onclick="toggleSidebar()"></div>
+
+    <!-- Left Sidebar -->
+    <aside class="pm-sidebar" id="pm-sidebar">
+      <div>
+        <!-- Main Navigation -->
+        <div class="pm-sidebar-group">
+          <div class="pm-sidebar-heading">Navigation</div>
+          <nav class="pm-sidebar-nav">
+            <a href="index.html" class="pm-nav-item">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎮</span> Official Games</span>
+            </a>
+            <a href="community.html" class="pm-nav-item active">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🌟</span> PluhCommunity</span>
+              <span class="pm-nav-badge" id="sidebar-comm-count" style="background:var(--accent-yellow); color:#000;">Hub</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Categories Section -->
+        <div class="pm-sidebar-group">
+          <div class="pm-sidebar-heading">Community Genres</div>
+          <nav class="pm-sidebar-nav" id="comm-category-nav">
+            <button class="pm-nav-item comm-cat-link active" data-cat="all">
+              <span class="pm-nav-left"><span class="pm-nav-icon">✨</span> All Community</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="arcade">
+              <span class="pm-nav-left"><span class="pm-nav-icon">👾</span> Arcade & Casual</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="action">
+              <span class="pm-nav-left"><span class="pm-nav-icon">⚔️</span> Action & Combat</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="rpg">
+              <span class="pm-nav-left"><span class="pm-nav-icon">❤️</span> RPG & Story</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="runner">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🏃‍♂️</span> Runner & Rhythm</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="puzzle">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🧩</span> Puzzle & Logic</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="strategy">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🎯</span> Strategy & Skill</span>
+            </button>
+            <button class="pm-nav-item comm-cat-link" data-cat="3d">
+              <span class="pm-nav-left"><span class="pm-nav-icon">🔫</span> 3D & FPS</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="pm-sidebar-footer">
+        <div class="pm-cloud-status-card" onclick="openCrimXModal()" title="View CrimX Profile & Cloud Saves">
+          <span style="font-size:1.1rem;">☁️</span>
+          <div>
+            <div style="font-weight:700; font-size:0.8rem;">CrimX Account</div>
+            <div style="font-size:0.7rem; color:var(--text-dim);">Publish & star creations</div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem; color:var(--text-dim); text-align:center; padding-top:4px;">
+          Panic Shortcut: <kbd style="background:#000; color:#00f0ff; padding:1px 5px; border-radius:3px;">]</kbd>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="pm-content-wrapper">
+      <main class="cm-container">
+
+        <!-- High-Impact Spotlight Banner -->
+        <section class="cm-spotlight" id="community-hero" style="background: radial-gradient(circle at 85% 20%, rgba(245,158,11,0.18) 0%, rgba(16,22,38,0.85) 60%), linear-gradient(135deg, rgba(16,22,38,0.95), rgba(11,15,25,0.98)); border-color: rgba(245,158,11,0.3);">
+          <div style="z-index: 2; max-width: 680px;">
+            <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+              <span class="cm-spotlight-badge" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#000; font-weight:800;">★ PLUHCOMMUNITY</span>
+              <span style="font-size:0.75rem; color:var(--accent-yellow); background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); padding:2px 8px; border-radius:12px; font-weight:700;">
+                👑 Top Creations Promoted to Main Catalogue
+              </span>
+            </div>
+            <h1 class="cm-spotlight-title" style="background:linear-gradient(135deg, #fff 40%, #fbbf24 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+              Community Games
+            </h1>
+            <p class="cm-spotlight-desc">
+              Play, share, and publish custom web games created by players worldwide! If a game is good enough, it gets promoted directly to the official PluhMath catalogue.
+            </p>
+            <div class="cm-spotlight-actions">
+              <button type="button" class="cm-btn cm-btn-yellow" style="padding:0.75rem 1.6rem; font-size:0.95rem; font-weight:800;" onclick="window.PluhCommunity.openPublisherModal()">
+                <span>🚀</span> + Publish Your Game
+              </button>
+              <button type="button" class="cm-btn cm-btn-blue" style="padding:0.75rem 1.2rem; font-size:0.95rem;" onclick="document.getElementById('community-feed-section').scrollIntoView({behavior:'smooth'})">
+                Browse Creations ↓
+              </button>
+            </div>
+          </div>
+          <div style="font-size: 6rem; opacity: 0.95; filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.4)); user-select: none; animation: floatHeart 3.2s ease-in-out infinite alternate;">
+            🌟
+          </div>
+        </section>
+
+        <!-- Sort & Filter Bar -->
+        <section id="community-feed-section" style="margin-bottom:1.5rem;">
+          <div class="pm-comm-filter-bar">
+            
+            <!-- Sort Tabs -->
+            <div class="pm-comm-tabs">
+              <button class="pm-comm-tab active" data-sort="trending">
+                <span>🔥</span> Trending
+              </button>
+              <button class="pm-comm-tab" data-sort="stars">
+                <span>⭐</span> Top Starred
+              </button>
+              <button class="pm-comm-tab" data-sort="newest">
+                <span>🕒</span> Newest
+              </button>
+              <button class="pm-comm-tab" data-sort="views">
+                <span>👁️</span> Most Played
+              </button>
+              <button class="pm-comm-tab" data-sort="promoted">
+                <span>👑</span> Promoted Picks
+              </button>
+              <button class="pm-comm-tab" data-sort="my_creations" id="tab-my-creations">
+                <span>👤</span> My Creations
+              </button>
+            </div>
+
+            <!-- Total count & Admin Toggle -->
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span id="comm-games-count" style="font-size:0.85rem; color:var(--text-dim); font-weight:600;">
+                Loading creations...
+              </span>
+              <button type="button" id="admin-tools-toggle" class="cm-btn cm-btn-blue" style="font-size:0.75rem; padding:4px 10px;" onclick="toggleAdminView()">
+                ⚙️ Curator Mode
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Community Games Grid -->
+        <section>
+          <div class="cm-games-grid" id="community-games-grid">
+            <!-- Populated dynamically by community-games.js -->
+            <div style="grid-column: 1 / -1; text-align:center; padding:3rem; color:var(--text-dim);">
+              <div style="font-size:2.5rem; margin-bottom:0.6rem;">⏳</div>
+              <div style="font-weight:700; color:#fff; font-size:1.1rem;">Loading PluhCommunity creations...</div>
+              <div style="font-size:0.85rem; margin-top:4px;">Connecting to community database</div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Footer -->
+      <footer class="cm-footer">
+        <div class="cm-footer-logo">
+          <div class="cm-logo-box" style="font-size:0.9rem; width:26px; height:26px; background:var(--accent-yellow); color:#000;">★</div>
+          <span style="font-weight:700; font-size:1.1rem; color:#fff;">PLUHCOMMUNITY</span>
+        </div>
+        <p class="cm-footer-disclaimer">
+          Open publishing platform for web games. Created games remain the property of their authors.
+        </p>
+      </footer>
+
+    </div> <!-- .pm-content-wrapper -->
+  </div> <!-- .pm-app-layout -->
+
+  <script src="games-data.js"></script>
+  <script src="panic-system.js"></script>
+  <script type="module" src="crimx-auth.js"></script>
+  <script type="module" src="community-games.js"></script>
+
+  <script type="module">
+    import { 
+      fetchCommunityGames, 
+      renderCommunityGameCard, 
+      ensurePublisherModal 
+    } from "./community-games.js";
+
+    let currentSort = 'trending';
+    let currentCat = 'all';
+    let searchQuery = '';
+    let showAdmin = false;
+    let onlyMyCreations = false;
+
+    window.toggleAdminView = function() {
+      showAdmin = !showAdmin;
+      const btn = document.getElementById('admin-tools-toggle');
+      if (btn) {
+        btn.textContent = showAdmin ? '✓ Curator Active' : '⚙️ Curator Mode';
+        btn.classList.toggle('cm-btn-yellow', showAdmin);
+        btn.classList.toggle('cm-btn-blue', !showAdmin);
+      }
+      loadFeed();
+    };
+
+    window.PluhCommunity.reloadFeed = function() {
+      loadFeed();
+    };
+
+    async function loadFeed() {
+      const grid = document.getElementById('community-games-grid');
+      const countEl = document.getElementById('comm-games-count');
+      const sidebarCount = document.getElementById('sidebar-comm-count');
+      if (!grid) return;
+
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align:center; padding:3rem; color:var(--text-dim);">
+          <div style="font-size:2.5rem; margin-bottom:0.6rem;">⏳</div>
+          <div style="font-weight:700; color:#fff; font-size:1.1rem;">Loading PluhCommunity creations...</div>
+        </div>
+      `;
+
+      const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+      let games = await fetchCommunityGames({
+        sort: currentSort === 'my_creations' ? 'newest' : currentSort,
+        category: currentCat,
+        queryText: searchQuery,
+        promotedOnly: currentSort === 'promoted'
+      });
+
+      if (currentSort === 'my_creations') {
+        if (!user || !user.uid) {
+          grid.innerHTML = `
+            <div class="pm-comm-empty-card">
+              <div style="font-size:3rem; margin-bottom:0.6rem;">👤</div>
+              <h3 style="font-size:1.2rem; color:#fff; margin-bottom:0.4rem;">Sign in to view your creations</h3>
+              <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:1.2rem;">You need to be signed in to see the web games you have published.</p>
+              <button class="cm-btn cm-btn-yellow" onclick="window.openCrimXModal()">Sign In with CrimX</button>
+            </div>
+          `;
+          if (countEl) countEl.textContent = '0 creations';
+          return;
+        }
+        games = games.filter(g => g.authorUid === user.uid);
+      }
+
+      if (countEl) {
+        countEl.textContent = `${games.length} creation${games.length === 1 ? '' : 's'}`;
+      }
+      if (sidebarCount) {
+        sidebarCount.textContent = games.length;
+      }
+
+      if (games.length === 0) {
+        grid.innerHTML = `
+          <div class="pm-comm-empty-card">
+            <div style="font-size:3rem; margin-bottom:0.6rem;">🚀</div>
+            <h3 style="font-size:1.2rem; color:#fff; margin-bottom:0.4rem;">No Community Games Found</h3>
+            <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:1.2rem; max-width:420px; margin-left:auto; margin-right:auto;">
+              ${searchQuery ? `No creations matched "${searchQuery}". Try another search or category.` : 'Be the pioneer! Publish the very first community game and share it with players worldwide.'}
+            </p>
+            <button class="cm-btn cm-btn-yellow" onclick="window.PluhCommunity.openPublisherModal()" style="font-weight:800;">
+              <span>🚀</span> + Publish Your Game
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = games.map(g => renderCommunityGameCard(g, { showAdmin })).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      ensurePublisherModal();
+
+      // Check URL query parameters
+      const params = new URLSearchParams(window.location.search);
+      const catParam = params.get('cat');
+      if (catParam) {
+        currentCat = catParam;
+        document.querySelectorAll('.comm-cat-link').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.cat === catParam);
+        });
+      }
+
+      const sortParam = params.get('sort');
+      if (sortParam) {
+        currentSort = sortParam;
+        document.querySelectorAll('.pm-comm-tab').forEach(t => {
+          t.classList.toggle('active', t.dataset.sort === sortParam);
+        });
+      }
+
+      loadFeed();
+
+      // Sort Tabs Click
+      document.querySelectorAll('.pm-comm-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.pm-comm-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          currentSort = tab.dataset.sort;
+          loadFeed();
+        });
+      });
+
+      // Category Sidebar Click
+      document.querySelectorAll('.comm-cat-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelectorAll('.comm-cat-link').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+          currentCat = link.dataset.cat;
+          loadFeed();
+        });
+      });
+
+      // Search Input
+      const searchInput = document.getElementById('community-search-input');
+      if (searchInput) {
+        let timer = null;
+        searchInput.addEventListener('input', (e) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            searchQuery = e.target.value.trim();
+            loadFeed();
+          }, 250);
+        });
+      }
+
+      // Live update listener
+      window.addEventListener('pluhcommunity-games-updated', () => {
+        loadFeed();
+      });
+    });
+
+    window.toggleSidebar = function() {
+      const sidebar = document.getElementById('pm-sidebar');
+      const backdrop = document.getElementById('pm-backdrop');
+      if (sidebar) sidebar.classList.toggle('open');
+      if (backdrop) backdrop.classList.toggle('active');
+    };
+  </script>
+</body>
+</html>

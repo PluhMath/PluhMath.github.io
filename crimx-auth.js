@@ -1736,3 +1736,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// Expose PluhAuth ecosystem bindings for PluhCommunity & Community Games
+window.PluhAuth = {
+  db,
+  auth,
+  getCurrentUser: () => currentCrimXUser,
+  showToast,
+  escapeHtml
+};
+
+export { db, auth, currentCrimXUser, showToast, escapeHtml };
+
+
