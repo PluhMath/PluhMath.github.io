@@ -169,6 +169,12 @@ export async function publishCommunityGame(gameData) {
   const authorName = user.displayName || user.username || user.email?.split('@')[0] || 'Pluher';
   const authorAvatar = user.photoURL || user.avatarUrl || user.pfp || '';
 
+  // Check if author is an approved member of the Creator Program
+  let isCreator = false;
+  try {
+    isCreator = await isUserCreator(user.uid);
+  } catch(e) {}
+
   const docPayload = {
     title: cleanTitle,
     description: (gameData.description || '').trim(),
@@ -177,6 +183,7 @@ export async function publishCommunityGame(gameData) {
     authorUid: user.uid,
     authorName: authorName,
     authorAvatar: authorAvatar,
+    isCreatorGame: isCreator, // Flagged true if author is in the Creator Program
     gameSourceType: gameData.gameSourceType || 'url',
     gameUrl: (gameData.gameUrl || '').trim(),
     htmlContent: gameData.htmlContent || '',
@@ -188,6 +195,8 @@ export async function publishCommunityGame(gameData) {
     stars: 0,
     views: 0,
     promoted: false,
+    curatedBy: null,
+    curatedByUid: null,
     status: 'published',
     createdAt: serverTimestamp(),
     createdAtIso: new Date().toISOString(),
@@ -195,6 +204,32 @@ export async function publishCommunityGame(gameData) {
   };
 
   await setDoc(doc(db, 'community_games', docId), docPayload);
+
+  // SELECTIVE OWNER NOTIFICATION:
+  // When a Creator Program member publishes a game, send an instant notification to the owner!
+  // Normal game makers do NOT trigger notifications.
+  if (isCreator) {
+    try {
+      const notifRef = doc(collection(db, 'owner_notifications'));
+      await setDoc(notifRef, {
+        type: 'creator_game_drop',
+        gameId: docId,
+        gameTitle: cleanTitle,
+        category: gameData.category || 'arcade',
+        authorUid: user.uid,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        thumbnail: gameData.thumbnail || '',
+        read: false,
+        createdAt: serverTimestamp(),
+        createdAtIso: new Date().toISOString()
+      });
+      console.debug('[PluhCommunity] Notification alert created for Creator Program release:', cleanTitle);
+    } catch (notifErr) {
+      console.warn('[PluhCommunity] Notice dispatch note:', notifErr);
+    }
+  }
+
   return { id: docId, ...docPayload };
 }
 
@@ -317,7 +352,14 @@ export async function incrementGamePlayCount(gameId) {
  */
 export async function togglePromoteToCatalog(gameId) {
   const db = getDb();
+  const user = getCurrentUser();
   if (!db) throw new Error('Database connection required');
+
+  // Verify permission: Curator or Owner
+  const hasCuratorRights = user ? (await isUserCurator(user.uid)) : false;
+  if (!hasCuratorRights && !isOwner()) {
+    throw new Error('Only approved members of the Curator Program and the site owner can promote games to the main catalogue.');
+  }
 
   const cleanId = gameId.replace(/^community_/, '');
   const ref = doc(db, 'community_games', cleanId);
@@ -326,13 +368,258 @@ export async function togglePromoteToCatalog(gameId) {
 
   const curPromoted = snap.data().promoted === true;
   const newPromoted = !curPromoted;
+  const curatorName = user ? (user.displayName || user.username || 'Curator') : 'Curator';
 
   await updateDoc(ref, { 
     promoted: newPromoted,
+    curatedBy: newPromoted ? curatorName : null,
+    curatedByUid: newPromoted ? (user?.uid || null) : null,
     promotedAt: newPromoted ? serverTimestamp() : null
   });
 
   return newPromoted;
+}
+
+// ============================================================================
+// CURATOR & CREATOR PROGRAMS ENGINE
+// 1. Curator Program: Evaluators who can review & approve/promote games to main catalogue
+// 2. Creator Program: Elite game makers whose game drops trigger notifications to owner
+// ============================================================================
+
+/**
+ * Check if a user is an approved Curator (can approve games to main catalogue)
+ */
+export async function isUserCurator(uid) {
+  if (!uid) return false;
+  if (isOwner(uid)) return true;
+
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const docRef = doc(db, 'curator_members', uid);
+    const snap = await getDoc(docRef);
+    return snap.exists() && snap.data().active !== false;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Check if a user is in the Creator Program (top-tier game maker; publishes notify owner)
+ */
+export async function isUserCreator(uid) {
+  if (!uid) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const docRef = doc(db, 'creator_members', uid);
+    const snap = await getDoc(docRef);
+    return snap.exists() && snap.data().active !== false;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Owner check helper
+ */
+export function isOwner(uid) {
+  const user = getCurrentUser();
+  if (localStorage.getItem('pluh_owner_mode') === 'true') return true;
+  if (user && (user.role === 'admin' || user.isAdmin === true || user.email?.includes('allab') || user.username === 'Crimson')) return true;
+  return false;
+}
+
+export function setOwnerMode(active) {
+  if (active) {
+    localStorage.setItem('pluh_owner_mode', 'true');
+  } else {
+    localStorage.removeItem('pluh_owner_mode');
+  }
+}
+
+/**
+ * Add a member to Curator Program or Creator Program (Owner only)
+ */
+export async function addProgramMember(programType, { uid, username, displayName }) {
+  const db = getDb();
+  if (!db) throw new Error('Database unavailable');
+  const cleanUsername = (username || '').replace(/^@/, '').trim();
+  if (!cleanUsername) throw new Error('Username required');
+
+  const cleanUid = uid || `user_${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  const colName = programType === 'curator' ? 'curator_members' : 'creator_members';
+
+  await setDoc(doc(db, colName, cleanUid), {
+    uid: cleanUid,
+    username: cleanUsername,
+    displayName: displayName || cleanUsername,
+    programType,
+    active: true,
+    addedAt: serverTimestamp(),
+    addedAtIso: new Date().toISOString()
+  });
+
+  return true;
+}
+
+/**
+ * Remove a member from Curator Program or Creator Program (Owner only)
+ */
+export async function removeProgramMember(programType, uid) {
+  const db = getDb();
+  if (!db) throw new Error('Database unavailable');
+  const colName = programType === 'curator' ? 'curator_members' : 'creator_members';
+  await deleteDoc(doc(db, colName, uid));
+  return true;
+}
+
+/**
+ * Fetch members of Curator Program or Creator Program
+ */
+export async function fetchProgramMembers(programType) {
+  const db = getDb();
+  if (!db) return [];
+  const colName = programType === 'curator' ? 'curator_members' : 'creator_members';
+  try {
+    const snap = await getDocs(collection(db, colName));
+    const members = [];
+    snap.forEach(d => {
+      members.push({ id: d.id, ...d.data() });
+    });
+    return members;
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Submit an application to join the Curator Program or Creator Program
+ */
+export async function submitProgramApplication(programType, { reason, favoriteGames, experience }) {
+  const user = getCurrentUser();
+  const db = getDb();
+  if (!user) throw new Error('Please sign in to submit an application.');
+  if (!db) throw new Error('Database unavailable.');
+
+  const username = user.username || user.displayName || user.email?.split('@')[0] || 'Pluher';
+  const appId = `${programType}_${user.uid}_${Date.now()}`;
+
+  await setDoc(doc(db, 'program_applications', appId), {
+    appId,
+    uid: user.uid,
+    username,
+    displayName: user.displayName || username,
+    avatar: user.photoURL || user.avatarUrl || '',
+    programType, // 'curator' (evaluator) or 'creator' (game maker)
+    reason: (reason || '').trim(),
+    favoriteGames: (favoriteGames || '').trim(),
+    experience: (experience || '').trim(),
+    status: 'pending',
+    createdAt: serverTimestamp(),
+    createdAtIso: new Date().toISOString()
+  });
+
+  return true;
+}
+
+/**
+ * Fetch pending applications (Owner only)
+ */
+export async function fetchProgramApplications() {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snap = await getDocs(collection(db, 'program_applications'));
+    const apps = [];
+    snap.forEach(d => {
+      apps.push({ id: d.id, ...d.data() });
+    });
+    return apps.sort((a,b) => (b.createdAtIso || '').localeCompare(a.createdAtIso || ''));
+  } catch(e) {
+    return [];
+  }
+}
+
+/**
+ * Approve application (Owner only)
+ */
+export async function approveProgramApplication(app) {
+  const db = getDb();
+  if (!db) throw new Error('Database unavailable');
+
+  await addProgramMember(app.programType, {
+    uid: app.uid,
+    username: app.username,
+    displayName: app.displayName
+  });
+
+  await updateDoc(doc(db, 'program_applications', app.id || app.appId), {
+    status: 'approved',
+    reviewedAt: serverTimestamp()
+  });
+
+  return true;
+}
+
+/**
+ * Reject application (Owner only)
+ */
+export async function rejectProgramApplication(appId) {
+  const db = getDb();
+  if (!db) throw new Error('Database unavailable');
+  await updateDoc(doc(db, 'program_applications', appId), {
+    status: 'rejected',
+    reviewedAt: serverTimestamp()
+  });
+  return true;
+}
+
+// ============================================================================
+// OWNER NOTIFICATIONS SYSTEM (SELECTIVE FOR CREATOR PROGRAM RELEASES)
+// ============================================================================
+
+/**
+ * Fetch notifications for owner (releases from Creator Program members)
+ */
+export async function fetchOwnerNotifications() {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snap = await getDocs(collection(db, 'owner_notifications'));
+    const notifs = [];
+    snap.forEach(d => {
+      notifs.push({ id: d.id, ...d.data() });
+    });
+    return notifs.sort((a,b) => (b.createdAtIso || '').localeCompare(a.createdAtIso || ''));
+  } catch(e) {
+    return [];
+  }
+}
+
+/**
+ * Mark notification as read
+ */
+export async function markNotificationRead(notifId) {
+  const db = getDb();
+  if (!db || !notifId) return;
+  try {
+    await updateDoc(doc(db, 'owner_notifications', notifId), { read: true });
+  } catch(e) {}
+}
+
+/**
+ * Clear all owner notifications
+ */
+export async function clearAllNotifications() {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const snap = await getDocs(collection(db, 'owner_notifications'));
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref);
+    }
+  } catch(e) {}
 }
 
 /**
@@ -420,6 +707,7 @@ export function renderCommunityGameCard(game, options = {}) {
   const title = escapeHtml(game.title || 'Untitled Game');
   const cat = escapeHtml((game.category || 'Arcade').toUpperCase());
   const isPromoted = game.promoted === true;
+  const isCreatorGame = game.isCreatorGame === true;
 
   const playUrl = `game.html?community=${encodeURIComponent(game.id)}`;
   const authorAvatar = game.authorAvatar 
@@ -429,9 +717,12 @@ export function renderCommunityGameCard(game, options = {}) {
   return `
     <div class="cm-tile pm-comm-card ${isPromoted ? 'pm-comm-promoted' : ''}" data-game-id="${escapeHtml(game.id)}">
       <div class="cm-tile-thumb-container">
-        <span class="cm-tile-badge ${isPromoted ? 'pm-badge-promoted' : 'pm-badge-comm'}">
-          ${isPromoted ? '👑 COMMUNITY PICK' : '🌟 COMMUNITY'}
-        </span>
+        <div style="position:absolute; top:8px; left:8px; display:flex; gap:4px; z-index:2; flex-wrap:wrap;">
+          <span class="cm-tile-badge ${isPromoted ? 'pm-badge-promoted' : 'pm-badge-comm'}">
+            ${isPromoted ? '👑 COMMUNITY PICK' : '🌟 COMMUNITY'}
+          </span>
+          ${isCreatorGame ? `<span class="cm-tile-badge pm-badge-creator" title="Creator Program Release">🚀 CREATOR</span>` : ''}
+        </div>
 
         ${game.thumbnail 
           ? `<img class="cm-tile-thumb" src="${game.thumbnail}" alt="${title}" onerror="this.parentElement.innerHTML='<div class=\\'cm-tile-graphic\\' style=\\'background:${game.bgGradient}\\'>${game.icon || '🎮'}</div>'" />`
@@ -458,18 +749,25 @@ export function renderCommunityGameCard(game, options = {}) {
           <div style="display:flex; align-items:center; gap:6px; min-width:0;">
             ${authorAvatar}
             <span class="pm-comm-author-name">@${author}</span>
+            ${isCreatorGame ? `<span style="color:#10b981; font-size:0.7rem;" title="Verified Creator">✓</span>` : ''}
           </div>
           <span class="pm-comm-views">👁️ ${views}</span>
         </div>
+
+        ${game.curatedBy ? `
+          <div style="font-size:0.72rem; color:#fbbf24; font-weight:700; margin-top:4px;">
+            ⭐ Curated by @${escapeHtml(game.curatedBy)}
+          </div>
+        ` : ''}
 
         <div class="cm-tile-meta" style="margin-top:6px;">
           <span>${cat}</span>
           ${isPromoted ? `<span style="color:var(--accent-yellow); font-weight:700;">★ TOP PICK</span>` : `<span>★ 4.9</span>`}
         </div>
 
-        ${options.showAdmin ? `
+        ${(options.showAdmin || options.isCurator || isOwner()) ? `
           <div class="pm-comm-admin-bar">
-            <button type="button" class="cm-btn cm-btn-yellow" style="padding:4px 8px; font-size:0.72rem; width:100%;" onclick="window.PluhCommunity.handlePromoteClick('${game.id}', this)">
+            <button type="button" class="cm-btn cm-btn-yellow" style="padding:4px 8px; font-size:0.72rem; width:100%; font-weight:800;" onclick="window.PluhCommunity.handlePromoteClick('${game.id}', this)">
               ${isPromoted ? '⭐ Remove from Main' : '🌟 Promote to Main'}
             </button>
           </div>
@@ -867,5 +1165,21 @@ window.PluhCommunity = {
   testRunInSandbox,
   handleFormSubmit,
   handleStarClick,
-  handlePromoteClick
+  handlePromoteClick,
+  // Curator & Creator Programs
+  isUserCurator,
+  isUserCreator,
+  isOwner,
+  setOwnerMode,
+  addProgramMember,
+  removeProgramMember,
+  fetchProgramMembers,
+  submitProgramApplication,
+  fetchProgramApplications,
+  approveProgramApplication,
+  rejectProgramApplication,
+  // Owner Notifications
+  fetchOwnerNotifications,
+  markNotificationRead,
+  clearAllNotifications
 };

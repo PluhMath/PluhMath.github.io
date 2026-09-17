@@ -55,8 +55,14 @@
       <button class="cm-search-btn" title="Search">🔍</button>
     </div>
 
-    <!-- Right Header Actions (Only User Profile & Emergency Panic) -->
+    <!-- Right Header Actions -->
     <div class="cm-header-actions">
+      <div class="pm-notif-wrapper" id="owner-notif-wrapper">
+        <a href="community.html" class="cm-btn cm-btn-blue pm-notif-btn" id="owner-notif-btn" title="Creator Program Release Alerts" style="text-decoration:none;">
+          <span>🔔</span>
+          <span class="pm-notif-badge" id="owner-notif-badge" style="display:none;">0</span>
+        </a>
+      </div>
       <div id="crimx-auth-slot"></div>
       <button class="cm-btn cm-btn-panic panic-trigger" onclick="triggerPanic()" title="Emergency Panic Button (Shortcut: ])">
         🚨 Panic
@@ -239,12 +245,13 @@
             promoted.forEach(p => {
               const cleanId = `community_${p.id}`;
               const exists = GAMES_DB.some(g => g.id === cleanId || g.id === p.id);
-              if (!exists) {
                 GAMES_DB.push({
                   id: cleanId,
                   slug: cleanId,
                   url: `game.html?community=${encodeURIComponent(p.id)}`,
                   title: p.title,
+                  curatedBy: p.curatedBy || null,
+                  isCreatorGame: p.isCreatorGame === true,
                   category: `${(p.category || 'Arcade').toUpperCase()}`,
                   categorySlug: (p.category || 'arcade').toLowerCase(),
                   categories: [(p.category || 'arcade').toLowerCase(), 'community'],
@@ -255,8 +262,8 @@
                   howToPlay: p.howToPlay || 'Play this community game!',
                   controls: p.controls || [{ key: 'Mouse & Keyboard', desc: 'Interact' }],
                   icon: p.icon || '🌟',
-                  badge: '🌟 COMMUNITY PICK',
-                  badgeColor: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  badge: p.isCreatorGame ? '🚀 CREATOR HIT' : '🌟 COMMUNITY PICK',
+                  badgeColor: p.isCreatorGame ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
                   thumbnail: p.thumbnail || '',
                   bgGradient: p.bgGradient || 'linear-gradient(135deg, #0f172a, #1e1b4b)'
                 });
@@ -305,7 +312,8 @@
           </div>
           <div class="cm-tile-info">
             <div class="cm-tile-title">${g.title}</div>
-            <div class="cm-tile-meta">
+            ${g.curatedBy ? `<div style="font-size:0.7rem; color:#fbbf24; font-weight:700; margin-top:2px;">⭐ Curated by @${g.curatedBy}</div>` : ''}
+            <div class="cm-tile-meta" style="margin-top:4px;">
               <span>${g.category}</span>
               <span class="cm-tile-rating">★ ${g.rating}</span>
             </div>

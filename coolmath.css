@@ -2052,3 +2052,74 @@ body {
   background: rgba(0, 240, 255, 0.06);
 }
 
+/* ═════════════════════════════════════════════════════════════════
+   OWNER NOTIFICATIONS & PROGRAM BADGES
+   ═════════════════════════════════════════════════════════════════ */
+
+.pm-notif-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pm-notif-btn {
+  position: relative;
+  padding: 0.5rem 0.85rem !important;
+  font-size: 0.95rem !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pm-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  animation: pulseBadge 1.8s infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.pm-badge-creator {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.pm-badge-curator {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.pm-notif-item {
+  transition: var(--transition);
+}
+
+.pm-notif-item.unread {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
+
+

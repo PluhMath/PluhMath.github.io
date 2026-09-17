@@ -236,11 +236,22 @@ async function loadCommunityGamePage(communityId) {
   document.title = `${game.title} — Play Free on PluhCommunity`;
 
   if (authorBadge) {
-    authorBadge.textContent = `by @${game.authorName || 'Pluher'}`;
+    authorBadge.innerHTML = `by @${game.authorName || 'Pluher'}${game.isCreatorGame ? ' <span style="color:#10b981; font-weight:800; margin-left:4px;">🚀 CREATOR</span>' : ''}${game.curatedBy ? ` • ⭐ Curated by @${game.curatedBy}` : ''}`;
     authorBadge.style.display = 'inline-block';
   }
 
-  if (promoteBtn) {
+  // Check if user has Curator or Owner privileges to promote
+  let canCurate = false;
+  try {
+    const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+    if (user && window.PluhCommunity && window.PluhCommunity.isUserCurator) {
+      canCurate = await window.PluhCommunity.isUserCurator(user.uid);
+    } else if (window.PluhCommunity && window.PluhCommunity.isOwner) {
+      canCurate = window.PluhCommunity.isOwner();
+    }
+  } catch(e) {}
+
+  if (promoteBtn && canCurate) {
     promoteBtn.style.display = 'inline-block';
     promoteBtn.textContent = game.promoted ? '⭐ Remove from Main' : '🌟 Promote to Main';
     window.handlePromoteActiveGame = async function() {
@@ -254,6 +265,8 @@ async function loadCommunityGamePage(communityId) {
         alert(err.message);
       }
     };
+  } else if (promoteBtn) {
+    promoteBtn.style.display = 'none';
   }
 
   if (descEl) descEl.textContent = game.description || 'A web game created by the PluhMath community.';

@@ -59,6 +59,14 @@
 
     <!-- Right Header Actions -->
     <div class="cm-header-actions">
+      <!-- Owner Notification Bell (Alerts for Creator Program drops) -->
+      <div class="pm-notif-wrapper" id="owner-notif-wrapper">
+        <button type="button" class="cm-btn cm-btn-blue pm-notif-btn" id="owner-notif-btn" onclick="openOwnerNotifModal()" title="Creator Program Release Notifications">
+          <span>🔔</span>
+          <span class="pm-notif-badge" id="owner-notif-badge" style="display:none;">0</span>
+        </button>
+      </div>
+
       <button type="button" class="cm-btn cm-btn-yellow" onclick="window.PluhCommunity.openPublisherModal()" style="font-weight:800;" title="Publish your own game">
         <span>🚀</span> + Publish Game
       </button>
@@ -171,6 +179,50 @@
           </div>
         </section>
 
+        <!-- Curator Program & Creator Program Spotlight Banner -->
+        <section class="pm-programs-banner" style="background: linear-gradient(135deg, rgba(16,22,38,0.92), rgba(11,15,25,0.96)); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 1.1rem 1.4rem; margin-bottom: 1.6rem; display: flex; justify-content: space-between; align-items: center; gap: 1.2rem; flex-wrap: wrap; box-shadow: 0 4px 20px rgba(0,0,0,0.35);">
+          <div style="display:flex; gap:1.8rem; flex-wrap:wrap; align-items:center;">
+            
+            <!-- Curator Program (The Evaluators) -->
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="font-size:1.8rem;">🛡️</div>
+              <div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:800; color:#fff; font-size:0.95rem; font-family:'Outfit', sans-serif;">Curator Program</span>
+                  <span style="font-size:0.68rem; padding:1px 6px; border-radius:6px; background:rgba(147,51,234,0.2); color:#c084fc; font-weight:800;">EVALUATOR</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Approved curators review & promote games to the main catalogue</div>
+              </div>
+              <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.75rem; padding:4px 10px; margin-left:4px;" onclick="openProgramApplicationModal('curator')">
+                Apply
+              </button>
+            </div>
+
+            <!-- Creator Program (The Top Developers) -->
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="font-size:1.8rem;">🚀</div>
+              <div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:800; color:#fff; font-size:0.95rem; font-family:'Outfit', sans-serif;">Creator Program</span>
+                  <span style="font-size:0.68rem; padding:1px 6px; border-radius:6px; background:rgba(16,185,129,0.2); color:#34d399; font-weight:800;">VERIFIED CREATOR</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Top-tier game makers whose new releases directly notify the owner</div>
+              </div>
+              <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.75rem; padding:4px 10px; margin-left:4px; font-weight:800;" onclick="openProgramApplicationModal('creator')">
+                Apply
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Owner & Curator Console Quick Access -->
+          <div style="display:flex; gap:0.6rem; align-items:center;">
+            <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.78rem; padding:6px 12px;" onclick="openOwnerConsoleModal()" title="Manage Curators, Creators & Applications">
+              ⚙️ Curator & Owner Console
+            </button>
+          </div>
+        </section>
+
         <!-- Sort & Filter Bar -->
         <section id="community-feed-section" style="margin-bottom:1.5rem;">
           <div class="pm-comm-filter-bar">
@@ -180,14 +232,14 @@
               <button class="pm-comm-tab active" data-sort="trending">
                 <span>🔥</span> Trending
               </button>
+              <button class="pm-comm-tab" data-sort="creators">
+                <span>🚀</span> Creator Games
+              </button>
               <button class="pm-comm-tab" data-sort="stars">
                 <span>⭐</span> Top Starred
               </button>
               <button class="pm-comm-tab" data-sort="newest">
                 <span>🕒</span> Newest
-              </button>
-              <button class="pm-comm-tab" data-sort="views">
-                <span>👁️</span> Most Played
               </button>
               <button class="pm-comm-tab" data-sort="promoted">
                 <span>👑</span> Promoted Picks
@@ -238,6 +290,129 @@
     </div> <!-- .pm-content-wrapper -->
   </div> <!-- .pm-app-layout -->
 
+  <!-- Owner Notifications Modal (Creator Program Release Alerts) -->
+  <div class="crimx-modal-backdrop" id="pm-owner-notif-modal">
+    <div class="crimx-modal-box" style="max-width: 580px; max-height: 85vh; overflow-y: auto;">
+      <div class="crimx-modal-header">
+        <div class="crimx-modal-title">
+          <span style="font-size:1.4rem;">🔔</span>
+          <div>
+            <div style="font-size:1.15rem; font-weight:800; font-family:'Outfit', sans-serif;">Creator Program Alerts</div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">Releases from approved Creator Program members</div>
+          </div>
+        </div>
+        <button class="crimx-modal-close" onclick="closeOwnerNotifModal()">×</button>
+      </div>
+
+      <div id="owner-notif-list" style="margin: 1rem 0; display: flex; flex-direction: column; gap: 10px;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding-top:0.8rem;">
+        <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:6px 12px;" onclick="clearOwnerNotifications()">
+          Clear All Alerts
+        </button>
+        <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:6px 14px; font-weight:700;" onclick="closeOwnerNotifModal()">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Program Application Modal (Curator Program or Creator Program) -->
+  <div class="crimx-modal-backdrop" id="pm-program-app-modal">
+    <div class="crimx-modal-box" style="max-width: 560px;">
+      <div class="crimx-modal-header">
+        <div class="crimx-modal-title">
+          <span id="app-modal-icon" style="font-size:1.4rem;">🛡️</span>
+          <div>
+            <div id="app-modal-title" style="font-size:1.15rem; font-weight:800; font-family:'Outfit', sans-serif;">Apply for Curator Program</div>
+            <div id="app-modal-sub" style="font-size:0.75rem; color:var(--text-dim);">Review & approve games for the official PluhMath catalogue</div>
+          </div>
+        </div>
+        <button class="crimx-modal-close" onclick="closeProgramApplicationModal()">×</button>
+      </div>
+
+      <form id="pm-app-form" onsubmit="handleProgramAppSubmit(event)" style="display:flex; flex-direction:column; gap:1.1rem; margin-top:0.6rem;">
+        <input type="hidden" id="app-target-program" value="curator">
+
+        <div class="crimx-field">
+          <label class="crimx-label">Select Program Track *</label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <label id="track-curator-label" style="display:flex; align-items:center; gap:8px; padding:10px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); cursor:pointer; font-size:0.84rem; color:#fff;">
+              <input type="radio" name="programTrack" value="curator" checked onchange="switchProgramTrack('curator')">
+              <div>
+                <div style="font-weight:700;">🛡️ Curator</div>
+                <div style="font-size:0.7rem; color:var(--text-dim);">Evaluate & approve games</div>
+              </div>
+            </label>
+            <label id="track-creator-label" style="display:flex; align-items:center; gap:8px; padding:10px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); cursor:pointer; font-size:0.84rem; color:#fff;">
+              <input type="radio" name="programTrack" value="creator" onchange="switchProgramTrack('creator')">
+              <div>
+                <div style="font-weight:700;">🚀 Creator</div>
+                <div style="font-size:0.7rem; color:var(--text-dim);">Game drops notify owner</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="crimx-field">
+          <label class="crimx-label">Why are you a great fit? *</label>
+          <textarea id="app-reason" class="crimx-input" rows="3" placeholder="Describe your gaming taste or the web games you develop..." required maxlength="400"></textarea>
+        </div>
+
+        <div class="crimx-field">
+          <label class="crimx-label">Portfolio / Favorite Games</label>
+          <input type="text" id="app-favs" class="crimx-input" placeholder="e.g. Undertale, Drift Boss, custom itch.io games..." maxlength="120">
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.6rem; border-top:1px solid var(--border-subtle); padding-top:0.8rem; margin-top:0.4rem;">
+          <button type="button" class="cm-btn cm-btn-blue" onclick="closeProgramApplicationModal()">Cancel</button>
+          <button type="submit" id="app-submit-btn" class="cm-btn cm-btn-yellow" style="font-weight:800; padding:0.6rem 1.4rem;">
+            Submit Application
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Curator & Owner Console Modal -->
+  <div class="crimx-modal-backdrop" id="pm-owner-console-modal">
+    <div class="crimx-modal-box" style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
+      <div class="crimx-modal-header">
+        <div class="crimx-modal-title">
+          <span style="font-size:1.4rem;">⚙️</span>
+          <div>
+            <div style="font-size:1.15rem; font-weight:800; font-family:'Outfit', sans-serif;">Curator & Owner Console</div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">Manage verified Curators, Creators, and applicant review</div>
+          </div>
+        </div>
+        <button class="crimx-modal-close" onclick="closeOwnerConsoleModal()">×</button>
+      </div>
+
+      <!-- Console Tabs -->
+      <div class="pm-comm-tabs" style="margin: 0.8rem 0; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-subtle);">
+        <button type="button" class="pm-comm-tab active" data-ctab="curators" onclick="switchConsoleTab('curators')">
+          <span>🛡️</span> Curators
+        </button>
+        <button type="button" class="pm-comm-tab" data-ctab="creators" onclick="switchConsoleTab('creators')">
+          <span>🚀</span> Creators
+        </button>
+        <button type="button" class="pm-comm-tab" data-ctab="applications" onclick="switchConsoleTab('applications')">
+          <span>📋</span> Applications
+        </button>
+        <button type="button" class="pm-comm-tab" data-ctab="access" onclick="switchConsoleTab('access')">
+          <span>👑</span> Owner Access
+        </button>
+      </div>
+
+      <!-- Console Content Container -->
+      <div id="console-tab-content" style="min-height: 220px; padding: 0.5rem 0;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
   <script src="games-data.js"></script>
   <script src="panic-system.js"></script>
   <script type="module" src="crimx-auth.js"></script>
@@ -247,14 +422,29 @@
     import { 
       fetchCommunityGames, 
       renderCommunityGameCard, 
-      ensurePublisherModal 
+      ensurePublisherModal,
+      isUserCurator,
+      isUserCreator,
+      isOwner,
+      setOwnerMode,
+      addProgramMember,
+      removeProgramMember,
+      fetchProgramMembers,
+      submitProgramApplication,
+      fetchProgramApplications,
+      approveProgramApplication,
+      rejectProgramApplication,
+      fetchOwnerNotifications,
+      markNotificationRead,
+      clearAllNotifications,
+      togglePromoteToCatalog
     } from "./community-games.js";
 
     let currentSort = 'trending';
     let currentCat = 'all';
     let searchQuery = '';
     let showAdmin = false;
-    let onlyMyCreations = false;
+    let activeConsoleTab = 'curators';
 
     window.toggleAdminView = function() {
       showAdmin = !showAdmin;
@@ -269,6 +459,305 @@
 
     window.PluhCommunity.reloadFeed = function() {
       loadFeed();
+    };
+
+    async function checkNotifications() {
+      const badge = document.getElementById('owner-notif-badge');
+      if (!badge) return;
+
+      const notifs = await fetchOwnerNotifications();
+      const unread = notifs.filter(n => !n.read).length;
+      if (unread > 0) {
+        badge.textContent = unread;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    window.openOwnerNotifModal = async function() {
+      const modal = document.getElementById('pm-owner-notif-modal');
+      const list = document.getElementById('owner-notif-list');
+      if (!modal || !list) return;
+
+      modal.classList.add('active');
+      list.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Loading release alerts...</div>`;
+
+      const notifs = await fetchOwnerNotifications();
+      if (!notifs || notifs.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding:2rem; background:rgba(255,255,255,0.02); border-radius:10px; border:1px dashed var(--border-subtle);">
+            <div style="font-size:2rem; margin-bottom:0.4rem;">🔔</div>
+            <div style="font-weight:700; color:#fff;">No New Creator Alerts</div>
+            <div style="font-size:0.78rem; color:var(--text-dim); margin-top:2px;">When approved Creator Program members publish games, alerts will appear here.</div>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = notifs.map(n => {
+        const timeStr = n.createdAtIso ? new Date(n.createdAtIso).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Recently';
+        return `
+          <div class="pm-notif-item ${n.read ? '' : 'unread'}" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:10px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+              ${n.thumbnail ? `<img src="${n.thumbnail}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">` : `<div style="font-size:1.5rem;">🎮</div>`}
+              <div style="min-width:0;">
+                <div style="font-weight:800; color:#fff; font-size:0.9rem;">
+                  🚀 <span style="color:var(--accent-yellow);">@${escapeHtml(n.authorName)}</span> dropped "${escapeHtml(n.gameTitle)}"
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-dim);">${timeStr} • Creator Program Release</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <a href="game.html?community=${encodeURIComponent(n.gameId)}" class="cm-btn cm-btn-blue" style="font-size:0.75rem; padding:4px 10px; text-decoration:none;">
+                ▶ Play
+              </a>
+              <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.75rem; padding:4px 10px; font-weight:800;" onclick="handlePromoteFromNotif('${n.gameId}', this)">
+                🌟 Promote
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Mark all as read
+      notifs.forEach(n => {
+        if (!n.read) markNotificationRead(n.id);
+      });
+      const badge = document.getElementById('owner-notif-badge');
+      if (badge) badge.style.display = 'none';
+    };
+
+    window.closeOwnerNotifModal = function() {
+      const modal = document.getElementById('pm-owner-notif-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.clearOwnerNotifications = async function() {
+      await clearAllNotifications();
+      const list = document.getElementById('owner-notif-list');
+      if (list) {
+        list.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Alerts cleared.</div>`;
+      }
+    };
+
+    window.handlePromoteFromNotif = async function(gameId, btnEl) {
+      try {
+        await togglePromoteToCatalog(gameId);
+        btnEl.textContent = '✓ Promoted!';
+        btnEl.disabled = true;
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('🌟 Promoted to Main PluhMath Catalogue!', 'success');
+        }
+      } catch(e) {
+        alert(e.message);
+      }
+    };
+
+    // Program Applications
+    window.openProgramApplicationModal = function(type = 'curator') {
+      const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+      if (!user) {
+        if (window.openCrimXModal) {
+          window.openCrimXModal();
+          if (window.PluhAuth) window.PluhAuth.showToast('Please sign in to apply for programs.', 'info');
+        } else {
+          alert('Please sign in to apply for programs.');
+        }
+        return;
+      }
+
+      const modal = document.getElementById('pm-program-app-modal');
+      if (!modal) return;
+
+      switchProgramTrack(type);
+      modal.classList.add('active');
+    };
+
+    window.closeProgramApplicationModal = function() {
+      const modal = document.getElementById('pm-program-app-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.switchProgramTrack = function(track) {
+      document.getElementById('app-target-program').value = track;
+      const isCurator = track === 'curator';
+      document.getElementById('app-modal-icon').textContent = isCurator ? '🛡️' : '🚀';
+      document.getElementById('app-modal-title').textContent = isCurator ? 'Apply for Curator Program' : 'Apply for Creator Program';
+      document.getElementById('app-modal-sub').textContent = isCurator 
+        ? 'Review & approve games for the official PluhMath catalogue' 
+        : 'Top-tier game makers whose releases directly notify the owner';
+      const curRadio = document.querySelector('input[name="programTrack"][value="curator"]');
+      const creRadio = document.querySelector('input[name="programTrack"][value="creator"]');
+      if (curRadio) curRadio.checked = isCurator;
+      if (creRadio) creRadio.checked = !isCurator;
+    };
+
+    window.handleProgramAppSubmit = async function(e) {
+      e.preventDefault();
+      const track = document.getElementById('app-target-program').value;
+      const reason = document.getElementById('app-reason').value;
+      const favs = document.getElementById('app-favs').value;
+      const btn = document.getElementById('app-submit-btn');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+      }
+
+      try {
+        await submitProgramApplication(track, { reason, favoriteGames: favs });
+        if (window.PluhAuth) window.PluhAuth.showToast('🎉 Application submitted to the site owner!', 'success');
+        closeProgramApplicationModal();
+        document.getElementById('pm-app-form').reset();
+      } catch(err) {
+        alert(err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Submit Application';
+        }
+      }
+    };
+
+    // Owner Console
+    window.openOwnerConsoleModal = function() {
+      const modal = document.getElementById('pm-owner-console-modal');
+      if (modal) {
+        modal.classList.add('active');
+        switchConsoleTab('curators');
+      }
+    };
+
+    window.closeOwnerConsoleModal = function() {
+      const modal = document.getElementById('pm-owner-console-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.switchConsoleTab = async function(tab) {
+      activeConsoleTab = tab;
+      document.querySelectorAll('#pm-owner-console-modal .pm-comm-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.ctab === tab);
+      });
+
+      const container = document.getElementById('console-tab-content');
+      if (!container) return;
+
+      if (tab === 'curators' || tab === 'creators') {
+        const type = tab === 'curators' ? 'curator' : 'creator';
+        container.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Loading ${tab}...</div>`;
+        const members = await fetchProgramMembers(type);
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
+            <div style="font-weight:700; color:#fff; font-size:0.92rem;">Active ${tab === 'curators' ? 'Curators (Can Approve Games)' : 'Creators (Notify Owner)'}</div>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="add-member-input" class="crimx-input" placeholder="Enter @username" style="padding:4px 8px; font-size:0.78rem; width:160px;">
+              <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.78rem; padding:4px 10px;" onclick="handleAddMember('${type}')">+ Add</button>
+            </div>
+          </div>
+          ${members.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:8px;">No ${tab} registered yet. Add one above!</div>` : `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${members.map(m => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:8px;">
+                  <div>
+                    <span style="font-weight:700; color:#fff;">@${escapeHtml(m.username)}</span>
+                    <span style="font-size:0.72rem; color:var(--text-dim); margin-left:8px;">UID: ${escapeHtml(m.uid)}</span>
+                  </div>
+                  <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRemoveMember('${type}', '${m.uid}')">Remove</button>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        `;
+      } else if (tab === 'applications') {
+        container.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Loading applications...</div>`;
+        const apps = await fetchProgramApplications();
+        const pending = apps.filter(a => a.status === 'pending');
+        container.innerHTML = `
+          <div style="font-weight:700; color:#fff; font-size:0.92rem; margin-bottom:0.8rem;">Pending Applications (${pending.length})</div>
+          ${pending.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:8px;">No pending applications.</div>` : `
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              ${pending.map(a => `
+                <div style="padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:800; color:#fff;">
+                      @${escapeHtml(a.username)} <span style="font-size:0.7rem; padding:1px 6px; border-radius:6px; background:rgba(245,158,11,0.2); color:#fbbf24; margin-left:6px;">${a.programType.toUpperCase()}</span>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                      <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.72rem; padding:3px 8px; font-weight:800;" onclick="handleApproveApplication('${a.id}', '${a.programType}', '${a.uid}', '${a.username}')">Approve</button>
+                      <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRejectApplication('${a.id}')">Decline</button>
+                    </div>
+                  </div>
+                  <div style="font-size:0.8rem; color:var(--text-main); margin-top:6px;">"${escapeHtml(a.reason)}"</div>
+                  ${a.favoriteGames ? `<div style="font-size:0.74rem; color:var(--text-dim); margin-top:2px;">Portfolio: ${escapeHtml(a.favoriteGames)}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          `}
+        `;
+      } else if (tab === 'access') {
+        const isOwnerActive = isOwner();
+        container.innerHTML = `
+          <div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid var(--border-glass);">
+            <div style="font-weight:800; color:#fff; font-size:1rem; margin-bottom:4px;">Site Owner Privileges</div>
+            <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">Toggle Owner Mode to administer all Curators, Creators, and receive live notifications.</div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button type="button" class="cm-btn ${isOwnerActive ? 'cm-btn-yellow' : 'cm-btn-blue'}" style="font-weight:800;" onclick="toggleOwnerModeState()">
+                ${isOwnerActive ? '✓ Owner Mode Active' : 'Enable Owner Mode'}
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    };
+
+    window.handleAddMember = async function(type) {
+      const input = document.getElementById('add-member-input');
+      const val = input ? input.value.trim() : '';
+      if (!val) return;
+      try {
+        await addProgramMember(type, { username: val });
+        if (window.PluhAuth) window.PluhAuth.showToast(`Added @${val} to ${type} program!`, 'success');
+        switchConsoleTab(type === 'curator' ? 'curators' : 'creators');
+      } catch(e) {
+        alert(e.message);
+      }
+    };
+
+    window.handleRemoveMember = async function(type, uid) {
+      try {
+        await removeProgramMember(type, uid);
+        switchConsoleTab(type === 'curator' ? 'curators' : 'creators');
+      } catch(e) {
+        alert(e.message);
+      }
+    };
+
+    window.handleApproveApplication = async function(appId, type, uid, username) {
+      try {
+        await approveProgramApplication({ id: appId, programType: type, uid, username });
+        if (window.PluhAuth) window.PluhAuth.showToast(`Approved @${username} as ${type}!`, 'success');
+        switchConsoleTab('applications');
+      } catch(e) {
+        alert(e.message);
+      }
+    };
+
+    window.handleRejectApplication = async function(appId) {
+      try {
+        await rejectProgramApplication(appId);
+        switchConsoleTab('applications');
+      } catch(e) {
+        alert(e.message);
+      }
+    };
+
+    window.toggleOwnerModeState = function() {
+      const active = isOwner();
+      setOwnerMode(!active);
+      switchConsoleTab('access');
+      loadFeed();
+      checkNotifications();
     };
 
     async function loadFeed() {
@@ -286,11 +775,16 @@
 
       const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
       let games = await fetchCommunityGames({
-        sort: currentSort === 'my_creations' ? 'newest' : currentSort,
+        sort: currentSort === 'my_creations' ? 'newest' : (currentSort === 'creators' ? 'trending' : currentSort),
         category: currentCat,
         queryText: searchQuery,
         promotedOnly: currentSort === 'promoted'
       });
+
+      // If Creator Games tab is selected
+      if (currentSort === 'creators') {
+        games = games.filter(g => g.isCreatorGame === true);
+      }
 
       if (currentSort === 'my_creations') {
         if (!user || !user.uid) {
@@ -331,11 +825,13 @@
         return;
       }
 
-      grid.innerHTML = games.map(g => renderCommunityGameCard(g, { showAdmin })).join('');
+      const isCur = user ? (await isUserCurator(user.uid)) : false;
+      grid.innerHTML = games.map(g => renderCommunityGameCard(g, { showAdmin: showAdmin || isCur || isOwner() })).join('');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       ensurePublisherModal();
+      checkNotifications();
 
       // Check URL query parameters
       const params = new URLSearchParams(window.location.search);
@@ -359,12 +855,14 @@
 
       // Sort Tabs Click
       document.querySelectorAll('.pm-comm-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.pm-comm-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          currentSort = tab.dataset.sort;
-          loadFeed();
-        });
+        if (!tab.closest('#pm-owner-console-modal')) {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('#community-feed-section .pm-comm-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentSort = tab.dataset.sort;
+            loadFeed();
+          });
+        }
       });
 
       // Category Sidebar Click
@@ -394,6 +892,7 @@
       // Live update listener
       window.addEventListener('pluhcommunity-games-updated', () => {
         loadFeed();
+        checkNotifications();
       });
     });
 
