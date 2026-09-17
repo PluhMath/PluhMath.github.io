@@ -236,7 +236,6 @@ window.onCrimXSignIn = async function(data) {
   });
 
   loadCloudSavesList().then(() => {
-    autoRestoreCloudSaves();
     autoSyncLocalToCloud();
   });
 
@@ -265,7 +264,7 @@ try {
           populateProfileCard(currentCrimXUser);
         }
       });
-      loadCloudSavesList().then(() => autoRestoreCloudSaves());
+      loadCloudSavesList();
       startGamePresence(currentCrimXUser.uid);
     }
   }
@@ -295,7 +294,6 @@ onAuthStateChanged(auth, async (user) => {
     });
 
     await loadCloudSavesList();
-    await autoRestoreCloudSaves();
     autoSyncLocalToCloud();
 
     // Start Dynamic Rich Game Presence across the CrimX ecosystem!
@@ -820,104 +818,13 @@ function isMatchingGame(id1, id2) {
   return false;
 }
 
-function injectRestoredSaveToGame(gameId, data) {
-  const iframe = document.getElementById('game-iframe');
-  if (!iframe || !iframe.contentWindow) return;
-
-  try {
-    // 1. Direct same-origin iframe localStorage injection (Run 3, Drift Boss, Tiny Fishing, etc.)
-    try {
-      if (iframe.contentWindow.localStorage && data && typeof data === 'object') {
-        for (const [k, v] of Object.entries(data)) {
-          if (!k.startsWith('__bridge_')) {
-            iframe.contentWindow.localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
-          }
-        }
-      }
-    } catch (crossErr) {}
-
-    // 2. PluhSaveBridge deep restore (handles IndexedDB, localStorage, and game bridge)
-    if (window.PluhSaveBridge && typeof window.PluhSaveBridge.restoreAllSaveDataForGame === 'function') {
-      window.PluhSaveBridge.restoreAllSaveDataForGame(gameId, data).catch(() => {});
-    }
-
-    // 3. PostMessage bridge (for Undertale, Deltarune, and frame postMessage listeners)
-    iframe.contentWindow.postMessage({
-      type: 'initialSaveDataResponse',
-      messageId: 'auto_restore_' + Date.now(),
-      allLocalStorageData: data
-    }, '*');
-    iframe.contentWindow.postMessage({
-      type: 'saveDataChanged',
-      gameId: gameId,
-      allLocalStorageData: data
-    }, '*');
-
-    // Reload iframe smoothly if it started before cloud data arrived
-    if (!iframe.dataset.cloudRestored) {
-      iframe.dataset.cloudRestored = 'true';
-      const curSrc = iframe.src;
-      iframe.src = 'about:blank';
-      setTimeout(() => { iframe.src = curSrc; }, 80);
-    }
-  } catch (e) {
-    console.debug('[CrimX Auto-Restore] Iframe injection warning:', e);
-  }
-}
-
 /**
- * Automatically restores all cloud saves into browser localStorage and active game iframes.
- * Completely automatic: no need to click 'Restore' manually!
+ * Auto-restore feature removed per user requirement:
+ * The cloud save system strictly UPLOADS / backs up game saves,
+ * and NEVER modifies, overwrites, or edits local save files.
  */
 export async function autoRestoreCloudSaves() {
-  if (!currentCrimXUser) return;
-
-  try {
-    const savesList = await loadCloudSavesList();
-    if (!savesList || savesList.length === 0) return;
-
-    const pageGame = getCurrentPageGameId();
-    let restoredCount = 0;
-
-    for (const saveDoc of savesList) {
-      const gameId = saveDoc.gameId;
-      const data = saveDoc.data;
-      if (!data || typeof data !== 'object') continue;
-
-      let gameRestored = false;
-
-      // Automatically populate each key into localStorage
-      for (const [k, v] of Object.entries(data)) {
-        if (!k.startsWith('__bridge_')) {
-          const strVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
-          const currentLocal = localStorage.getItem(k);
-          if (currentLocal === null || currentLocal === undefined || currentLocal === '') {
-            localStorage.setItem(k, strVal);
-            gameRestored = true;
-          } else if (currentLocal !== strVal) {
-            localStorage.setItem(k, strVal);
-            gameRestored = true;
-          }
-        }
-      }
-
-      if (gameRestored) {
-        restoredCount++;
-        console.log(`[CrimX Auto-Restore] ✓ Automatically restored ${saveDoc.gameTitle || gameId}`);
-
-        // If user is playing this game right now, inject into the live game iframe!
-        if (pageGame && (pageGame === gameId || isMatchingGame(pageGame, gameId))) {
-          injectRestoredSaveToGame(gameId, data);
-        }
-      }
-    }
-
-    if (restoredCount > 0) {
-      showToast(`☁️ Automatically restored your save data from CrimX Cloud!`, 'success');
-    }
-  } catch (err) {
-    console.error('[CrimX Auto-Restore] Error during auto-restore:', err);
-  }
+  return;
 }
 
 // ============================================================================
@@ -1351,9 +1258,6 @@ async function renderCloudSavesListInModal() {
             ⚡ Backup ${escapeHtml(curGameTitle)}
           </button>
         ` : ''}
-        <button class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="restoreAllCloudSaves()" title="Restore all game saves at once">
-          📥 Restore All
-        </button>
         <button class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all local game saves">
           ☁️ Backup All
         </button>
@@ -1372,78 +1276,13 @@ async function renderCloudSavesListInModal() {
           <div class="crimx-save-sub">Synced: ${dateStr} • ${items}</div>
         </div>
         <div class="crimx-save-actions">
-          <button class="cm-btn cm-btn-blue" style="padding:0.35rem 0.65rem; font-size:0.78rem;" onclick="restoreSaveToBrowser('${s.gameId}')" title="Restore this save to this browser">
-            📥 Restore
-          </button>
           <button class="cm-btn cm-btn-panic" style="padding:0.35rem 0.65rem; font-size:0.78rem;" onclick="deleteGameCloudSave('${s.gameId}')" title="Delete cloud backup">
             🗑️
           </button>
         </div>
       </div>
     `;
-  }).join('');
 }
-
-window.restoreAllCloudSaves = async function() {
-  if (!currentCrimXUser) {
-    showToast('Please sign in to restore cloud saves.', 'error');
-    return;
-  }
-  showToast('Restoring all game saves from cloud...', 'info');
-  const saves = await loadCloudSavesList();
-  if (!saves || saves.length === 0) {
-    showToast('No cloud saves found on your account.', 'info');
-    return;
-  }
-
-  let count = 0;
-  for (const s of saves) {
-    const gId = s.gameId;
-    if (window.PluhSaveBridge) {
-      await window.PluhSaveBridge.restoreAllSaveDataForGame(gId, s);
-    } else {
-      if (s.data && typeof s.data === 'object') {
-        Object.keys(s.data).forEach(k => localStorage.setItem(k, s.data[k]));
-      }
-    }
-    count++;
-  }
-
-  showToast(`✓ Restored all saves for ${count} game${count === 1 ? '' : 's'}!`, 'success');
-
-  const iframe = document.getElementById('game-iframe');
-  if (iframe) {
-    const cur = iframe.src;
-    iframe.src = 'about:blank';
-    setTimeout(() => { iframe.src = cur; }, 80);
-  }
-  renderCloudSavesListInModal();
-};
-
-window.restoreSaveToBrowser = async function(gameId) {
-  const save = cloudSavesCache[gameId] || await loadGameFromCloud(gameId);
-  if (!save) {
-    showToast('No save data available to restore.', 'error');
-    return;
-  }
-
-  if (window.PluhSaveBridge) {
-    await window.PluhSaveBridge.restoreAllSaveDataForGame(gameId, save);
-  } else {
-    const data = save.data;
-    if (data && typeof data === 'object') {
-      Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
-    }
-  }
-
-  showToast(`✓ Restored save for ${save.gameTitle || GAME_TITLES[gameId] || gameId}! Reloading game...`, 'success');
-  const iframe = document.getElementById('game-iframe');
-  if (iframe) {
-    const cur = iframe.src;
-    iframe.src = 'about:blank';
-    setTimeout(() => { iframe.src = cur; }, 80);
-  }
-};
 
 window.crimxForceBackupAll = async function() {
   showToast('Scanning local save files to backup...', 'info');
