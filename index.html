@@ -245,6 +245,7 @@
             promoted.forEach(p => {
               const cleanId = `community_${p.id}`;
               const exists = GAMES_DB.some(g => g.id === cleanId || g.id === p.id);
+              if (!exists) {
                 GAMES_DB.push({
                   id: cleanId,
                   slug: cleanId,
