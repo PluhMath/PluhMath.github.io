@@ -76,8 +76,8 @@
 
     <!-- Right Header Actions -->
     <div class="cm-header-actions">
-      <!-- Owner Notification Bell (Alerts for Creator Program drops) -->
-      <div class="pm-notif-wrapper" id="owner-notif-wrapper">
+      <!-- Owner Notification Bell (Alerts for Creator Program drops - Owner Only) -->
+      <div class="pm-notif-wrapper" id="owner-notif-wrapper" style="display:none;">
         <button type="button" class="cm-btn cm-btn-blue pm-notif-btn" id="owner-notif-btn" onclick="openOwnerNotifModal()" title="Creator Program Release Notifications">
           <span>🔔</span>
           <span class="pm-notif-badge" id="owner-notif-badge" style="display:none;">0</span>
@@ -232,8 +232,8 @@
 
           </div>
 
-          <!-- Owner & Curator Console Quick Access -->
-          <div style="display:flex; gap:0.6rem; align-items:center;">
+          <!-- Owner & Curator Console Quick Access (Staff Only) -->
+          <div id="owner-console-wrapper" style="display:none; gap:0.6rem; align-items:center;">
             <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.78rem; padding:6px 12px;" onclick="openOwnerConsoleModal()" title="Manage Curators, Creators & Applications">
               ⚙️ Curator & Owner Console
             </button>
@@ -271,7 +271,7 @@
               <span id="comm-games-count" style="font-size:0.85rem; color:var(--text-dim); font-weight:600;">
                 Loading creations...
               </span>
-              <button type="button" id="admin-tools-toggle" class="cm-btn cm-btn-blue" style="font-size:0.75rem; padding:4px 10px;" onclick="toggleAdminView()">
+              <button type="button" id="admin-tools-toggle" class="cm-btn cm-btn-blue" style="font-size:0.75rem; padding:4px 10px; display:none;" onclick="toggleAdminView()">
                 ⚙️ Curator Mode
               </button>
             </div>
@@ -418,9 +418,6 @@
         <button type="button" class="pm-comm-tab" data-ctab="applications" onclick="switchConsoleTab('applications')">
           <span>📋</span> Applications
         </button>
-        <button type="button" class="pm-comm-tab" data-ctab="access" onclick="switchConsoleTab('access')">
-          <span>👑</span> Owner Access
-        </button>
       </div>
 
       <!-- Console Content Container -->
@@ -463,7 +460,17 @@
     let showAdmin = false;
     let activeConsoleTab = 'curators';
 
-    window.toggleAdminView = function() {
+    window.toggleAdminView = async function() {
+      const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+      const isOwn = isOwner();
+      const isCur = user ? (await isUserCurator(user.uid)) : false;
+      if (!isOwn && !isCur) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Curator or Owner privileges required.', 'error');
+        }
+        return;
+      }
+
       showAdmin = !showAdmin;
       const btn = document.getElementById('admin-tools-toggle');
       if (btn) {
@@ -474,11 +481,44 @@
       loadFeed();
     };
 
+    window.updateStaffAccessUI = async function() {
+      const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+      const isOwn = isOwner();
+      const isCur = user ? (await isUserCurator(user.uid)) : false;
+
+      const notifWrapper = document.getElementById('owner-notif-wrapper');
+      if (notifWrapper) {
+        notifWrapper.style.display = isOwn ? 'block' : 'none';
+      }
+
+      const consoleWrapper = document.getElementById('owner-console-wrapper');
+      if (consoleWrapper) {
+        consoleWrapper.style.display = (isOwn || isCur) ? 'flex' : 'none';
+      }
+
+      const adminToggle = document.getElementById('admin-tools-toggle');
+      if (adminToggle) {
+        adminToggle.style.display = (isOwn || isCur) ? 'inline-block' : 'none';
+      }
+
+      if (!isOwn && !isCur) {
+        showAdmin = false;
+      }
+      if (isOwn) {
+        checkNotifications();
+      }
+    };
+
     window.PluhCommunity.reloadFeed = function() {
       loadFeed();
     };
 
     async function checkNotifications() {
+      if (!isOwner()) {
+        const badge = document.getElementById('owner-notif-badge');
+        if (badge) badge.style.display = 'none';
+        return;
+      }
       const badge = document.getElementById('owner-notif-badge');
       if (!badge) return;
 
@@ -493,6 +533,12 @@
     }
 
     window.openOwnerNotifModal = async function() {
+      if (!isOwner()) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Site Owner privileges required.', 'error');
+        }
+        return;
+      }
       const modal = document.getElementById('pm-owner-notif-modal');
       const list = document.getElementById('owner-notif-list');
       if (!modal || !list) return;
@@ -636,7 +682,9 @@
         closeProgramApplicationModal();
         document.getElementById('pm-app-form').reset();
       } catch(err) {
-        alert(err.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(err.message, 'error');
+        }
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -646,7 +694,16 @@
     };
 
     // Owner Console
-    window.openOwnerConsoleModal = function() {
+    window.openOwnerConsoleModal = async function() {
+      const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
+      const isOwn = isOwner();
+      const isCur = user ? (await isUserCurator(user.uid)) : false;
+      if (!isOwn && !isCur) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Curator or Owner access required.', 'error');
+        }
+        return;
+      }
       const modal = document.getElementById('pm-owner-console-modal');
       if (modal) {
         modal.style.display = 'flex';
@@ -672,6 +729,8 @@
       const container = document.getElementById('console-tab-content');
       if (!container) return;
 
+      const canManage = isOwner();
+
       if (tab === 'curators' || tab === 'creators') {
         const type = tab === 'curators' ? 'curator' : 'creator';
         container.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Loading ${tab}...</div>`;
@@ -679,12 +738,14 @@
         container.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
             <div style="font-weight:700; color:#fff; font-size:0.92rem;">Active ${tab === 'curators' ? 'Curators (Can Approve Games)' : 'Creators (Notify Owner)'}</div>
-            <div style="display:flex; gap:6px;">
-              <input type="text" id="add-member-input" class="crimx-input" placeholder="Enter @username" style="padding:4px 8px; font-size:0.78rem; width:160px;">
-              <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.78rem; padding:4px 10px;" onclick="handleAddMember('${type}')">+ Add</button>
-            </div>
+            ${canManage ? `
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="add-member-input" class="crimx-input" placeholder="Enter @username" style="padding:4px 8px; font-size:0.78rem; width:160px;">
+                <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.78rem; padding:4px 10px;" onclick="handleAddMember('${type}')">+ Add</button>
+              </div>
+            ` : ''}
           </div>
-          ${members.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:8px;">No ${tab} registered yet. Add one above!</div>` : `
+          ${members.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:8px;">No ${tab} registered yet.</div>` : `
             <div style="display:flex; flex-direction:column; gap:8px;">
               ${members.map(m => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:8px;">
@@ -692,7 +753,9 @@
                     <span style="font-weight:700; color:#fff;">@${escapeHtml(m.username)}</span>
                     <span style="font-size:0.72rem; color:var(--text-dim); margin-left:8px;">UID: ${escapeHtml(m.uid)}</span>
                   </div>
-                  <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRemoveMember('${type}', '${m.uid}')">Remove</button>
+                  ${canManage ? `
+                    <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRemoveMember('${type}', '${m.uid}')">Remove</button>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
@@ -712,10 +775,12 @@
                     <div style="font-weight:800; color:#fff;">
                       @${escapeHtml(a.username)} <span style="font-size:0.7rem; padding:1px 6px; border-radius:6px; background:rgba(245,158,11,0.2); color:#fbbf24; margin-left:6px;">${a.programType.toUpperCase()}</span>
                     </div>
-                    <div style="display:flex; gap:6px;">
-                      <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.72rem; padding:3px 8px; font-weight:800;" onclick="handleApproveApplication('${a.id}', '${a.programType}', '${a.uid}', '${a.username}')">Approve</button>
-                      <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRejectApplication('${a.id}')">Decline</button>
-                    </div>
+                    ${canManage ? `
+                      <div style="display:flex; gap:6px;">
+                        <button type="button" class="cm-btn cm-btn-yellow" style="font-size:0.72rem; padding:3px 8px; font-weight:800;" onclick="handleApproveApplication('${a.id}', '${a.programType}', '${a.uid}', '${a.username}')">Approve</button>
+                        <button type="button" class="cm-btn cm-btn-panic" style="font-size:0.72rem; padding:3px 8px;" onclick="handleRejectApplication('${a.id}')">Decline</button>
+                      </div>
+                    ` : ''}
                   </div>
                   <div style="font-size:0.8rem; color:var(--text-main); margin-top:6px;">"${escapeHtml(a.reason)}"</div>
                   ${a.favoriteGames ? `<div style="font-size:0.74rem; color:var(--text-dim); margin-top:2px;">Portfolio: ${escapeHtml(a.favoriteGames)}</div>` : ''}
@@ -724,69 +789,87 @@
             </div>
           `}
         `;
-      } else if (tab === 'access') {
-        const isOwnerActive = isOwner();
-        container.innerHTML = `
-          <div style="padding:1rem; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid var(--border-glass);">
-            <div style="font-weight:800; color:#fff; font-size:1rem; margin-bottom:4px;">Site Owner Privileges</div>
-            <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">Toggle Owner Mode to administer all Curators, Creators, and receive live notifications.</div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <button type="button" class="cm-btn ${isOwnerActive ? 'cm-btn-yellow' : 'cm-btn-blue'}" style="font-weight:800;" onclick="toggleOwnerModeState()">
-                ${isOwnerActive ? '✓ Owner Mode Active' : 'Enable Owner Mode'}
-              </button>
-            </div>
-          </div>
-        `;
       }
     };
 
     window.handleAddMember = async function(type) {
+      if (!isOwner()) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Owner access required.', 'error');
+        }
+        return;
+      }
       const input = document.getElementById('add-member-input');
       const val = input ? input.value.trim() : '';
       if (!val) return;
       try {
         await addProgramMember(type, { username: val });
-        if (window.PluhAuth) window.PluhAuth.showToast(`Added @${val} to ${type} program!`, 'success');
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(`Added @${val} to ${type} program!`, 'success');
+        }
         switchConsoleTab(type === 'curator' ? 'curators' : 'creators');
       } catch(e) {
-        alert(e.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(e.message, 'error');
+        }
       }
     };
 
     window.handleRemoveMember = async function(type, uid) {
+      if (!isOwner()) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Owner access required.', 'error');
+        }
+        return;
+      }
       try {
         await removeProgramMember(type, uid);
         switchConsoleTab(type === 'curator' ? 'curators' : 'creators');
       } catch(e) {
-        alert(e.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(e.message, 'error');
+        }
       }
     };
 
     window.handleApproveApplication = async function(appId, type, uid, username) {
+      if (!isOwner()) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Owner access required.', 'error');
+        }
+        return;
+      }
       try {
         await approveProgramApplication({ id: appId, programType: type, uid, username });
-        if (window.PluhAuth) window.PluhAuth.showToast(`Approved @${username} as ${type}!`, 'success');
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(`Approved @${username} as ${type}!`, 'success');
+        }
         switchConsoleTab('applications');
       } catch(e) {
-        alert(e.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(e.message, 'error');
+        }
       }
     };
 
     window.handleRejectApplication = async function(appId) {
+      if (!isOwner()) {
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Owner access required.', 'error');
+        }
+        return;
+      }
       try {
         await rejectProgramApplication(appId);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast('Application declined.', 'info');
+        }
         switchConsoleTab('applications');
       } catch(e) {
-        alert(e.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(e.message, 'error');
+        }
       }
-    };
-
-    window.toggleOwnerModeState = function() {
-      const active = isOwner();
-      setOwnerMode(!active);
-      switchConsoleTab('access');
-      loadFeed();
-      checkNotifications();
     };
 
     async function loadFeed() {
@@ -855,12 +938,18 @@
       }
 
       const isCur = user ? (await isUserCurator(user.uid)) : false;
-      grid.innerHTML = games.map(g => renderCommunityGameCard(g, { showAdmin: showAdmin || isCur || isOwner() })).join('');
+      const isOwn = isOwner();
+      const canCurate = (isCur || isOwn) && (showAdmin || isOwn);
+      grid.innerHTML = games.map(g => renderCommunityGameCard(g, { isCurator: canCurate, isOwner: isOwn })).join('');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       ensurePublisherModal();
-      checkNotifications();
+      updateStaffAccessUI();
+      window.addEventListener('crimx:auth_state_changed', () => {
+        updateStaffAccessUI();
+        loadFeed();
+      });
 
       // Check URL query parameters
       const params = new URLSearchParams(window.location.search);

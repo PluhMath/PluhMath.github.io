@@ -244,10 +244,12 @@ async function loadCommunityGamePage(communityId) {
   let canCurate = false;
   try {
     const user = window.PluhAuth ? window.PluhAuth.getCurrentUser() : null;
-    if (user && window.PluhCommunity && window.PluhCommunity.isUserCurator) {
-      canCurate = await window.PluhCommunity.isUserCurator(user.uid);
-    } else if (window.PluhCommunity && window.PluhCommunity.isOwner) {
-      canCurate = window.PluhCommunity.isOwner();
+    if (user && window.PluhCommunity) {
+      if (window.PluhCommunity.isOwner && window.PluhCommunity.isOwner()) {
+        canCurate = true;
+      } else if (window.PluhCommunity.isUserCurator) {
+        canCurate = await window.PluhCommunity.isUserCurator(user.uid);
+      }
     }
   } catch(e) {}
 
@@ -262,7 +264,9 @@ async function loadCommunityGamePage(communityId) {
           window.PluhAuth.showToast(isPromoted ? '🌟 Promoted to Main PluhMath Catalogue!' : 'Removed from Main Catalogue', 'success');
         }
       } catch (err) {
-        alert(err.message);
+        if (window.PluhAuth && window.PluhAuth.showToast) {
+          window.PluhAuth.showToast(err.message, 'error');
+        }
       }
     };
   } else if (promoteBtn) {

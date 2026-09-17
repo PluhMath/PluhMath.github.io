@@ -398,7 +398,7 @@ export async function isUserCurator(uid) {
   try {
     const docRef = doc(db, 'curator_members', uid);
     const snap = await getDoc(docRef);
-    return snap.exists() && snap.data().active !== false;
+    return snap.exists() && snap.data().active === true;
   } catch (e) {
     return false;
   }
@@ -424,18 +424,20 @@ export async function isUserCreator(uid) {
  * Owner check helper
  */
 export function isOwner(uid) {
+  try { localStorage.removeItem('pluh_owner_mode'); } catch(e) {}
   const user = getCurrentUser();
-  if (localStorage.getItem('pluh_owner_mode') === 'true') return true;
-  if (user && (user.role === 'admin' || user.isAdmin === true || user.email?.includes('allab') || user.username === 'Crimson')) return true;
+  if (!user) return false;
+  const role = (user.role || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+  const username = (user.username || '').toLowerCase();
+  const displayName = (user.displayName || '').toLowerCase();
+  if (role === 'admin' || user.isAdmin === true) return true;
+  if (email.includes('allab') || username === 'crimson' || displayName === 'crimson') return true;
   return false;
 }
 
 export function setOwnerMode(active) {
-  if (active) {
-    localStorage.setItem('pluh_owner_mode', 'true');
-  } else {
-    localStorage.removeItem('pluh_owner_mode');
-  }
+  try { localStorage.removeItem('pluh_owner_mode'); } catch(e) {}
 }
 
 /**
@@ -765,7 +767,7 @@ export function renderCommunityGameCard(game, options = {}) {
           ${isPromoted ? `<span style="color:var(--accent-yellow); font-weight:700;">★ TOP PICK</span>` : `<span>★ 4.9</span>`}
         </div>
 
-        ${(options.showAdmin || options.isCurator || isOwner()) ? `
+        ${Boolean(options.isCurator || isOwner()) ? `
           <div class="pm-comm-admin-bar">
             <button type="button" class="cm-btn cm-btn-yellow" style="padding:4px 8px; font-size:0.72rem; width:100%; font-weight:800;" onclick="window.PluhCommunity.handlePromoteClick('${game.id}', this)">
               ${isPromoted ? '⭐ Remove from Main' : '🌟 Promote to Main'}

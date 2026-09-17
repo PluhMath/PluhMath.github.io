@@ -20,13 +20,11 @@ function triggerPanic() {
   window.location.replace(target);
 }
 
-// Universal Tab Cloaker (Enter URL directly)
+// Universal Tab Cloaker (Opens custom settings modal - no prompt)
 function cloakTabPrompt() {
-  const current = localStorage.getItem('pluhmath_cloak_url') || 'https://classroom.google.com';
-  const urlInput = prompt('Enter the URL to cloak this tab as (e.g. https://classroom.google.com or leave empty to reset):', current);
-  if (urlInput !== null) {
-    applyCloakByUrl(urlInput.trim());
-  }
+  openPanicModal();
+  const input = document.getElementById('custom-cloak-input');
+  if (input) setTimeout(() => input.focus(), 150);
 }
 
 function applyCloakByUrl(url) {
@@ -155,9 +153,20 @@ function ensurePanicModal() {
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #233458; padding-top:0.75rem;">
+      <div class="cm-input-group" style="margin-top:0.9rem; border-top:1px solid #233458; padding-top:0.75rem;">
+        <label style="font-size:0.8rem; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">
+          Tab Cloaker (Disguise Tab Title & Favicon):
+        </label>
+        <div style="display:flex; gap:0.5rem; margin-top:4px;">
+          <input type="text" id="custom-cloak-input" class="cm-url-input" placeholder="https://classroom.google.com" style="flex:1;">
+          <button class="cm-btn cm-btn-blue" onclick="saveCustomCloak()" style="padding:0.6rem 1rem;">Cloak</button>
+          <button class="cm-btn cm-btn-outline" onclick="resetCloak()" style="padding:0.6rem 0.8rem;" title="Reset Tab Cloak">Reset</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #233458; padding-top:0.75rem; margin-top:0.75rem;">
         <span style="font-size:0.78rem; color:var(--cm-text-dim);">
-          Current: <strong id="current-panic-display" style="color:#00e5ff;">...</strong>
+          Current Panic: <strong id="current-panic-display" style="color:#00e5ff;">...</strong>
         </span>
         <button class="cm-btn cm-btn-panic" onclick="triggerPanic()" style="font-size:0.8rem; padding:0.4rem 0.8rem;">
           Test Panic Now
@@ -195,18 +204,52 @@ function closePanicModal() {
   if (modal) modal.classList.remove('active');
 }
 
+function showPanicToast(msg) {
+  if (window.PluhAuth && window.PluhAuth.showToast) {
+    window.PluhAuth.showToast(msg, 'success');
+    return;
+  }
+  let toast = document.getElementById('pm-panic-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'pm-panic-toast';
+    toast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#ffd000; color:#000; padding:10px 16px; border-radius:8px; font-weight:800; font-family:sans-serif; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:opacity 0.3s;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { if (toast) toast.style.opacity = '0'; }, 2500);
+}
+
 function saveCustomPanic() {
   const input = document.getElementById('custom-panic-input');
   if (input && input.value.trim()) {
     setPanicUrl(input.value.trim());
-    alert('Panic URL updated to: ' + getPanicUrl());
+    showPanicToast('Panic URL updated to: ' + getPanicUrl());
   }
+}
+
+function saveCustomCloak() {
+  const input = document.getElementById('custom-cloak-input');
+  if (input && input.value.trim()) {
+    applyCloakByUrl(input.value.trim());
+    showPanicToast('Tab cloaked successfully!');
+  }
+}
+
+function resetCloak() {
+  applyCloakByUrl('reset');
+  const input = document.getElementById('custom-cloak-input');
+  if (input) input.value = '';
+  showPanicToast('Tab cloak reset to default.');
 }
 
 function updateModalState() {
   const current = getPanicUrl();
   const disp = document.getElementById('current-panic-display');
   const input = document.getElementById('custom-panic-input');
+  const cloakInput = document.getElementById('custom-cloak-input');
+  const savedCloak = localStorage.getItem('pluhmath_cloak_url');
 
   if (disp) {
     try {
@@ -220,6 +263,10 @@ function updateModalState() {
 
   if (input && document.activeElement !== input) {
     input.value = current;
+  }
+
+  if (cloakInput && document.activeElement !== cloakInput) {
+    cloakInput.value = savedCloak || '';
   }
 
   const modal = document.getElementById('panic-settings-modal');

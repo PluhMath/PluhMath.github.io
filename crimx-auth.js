@@ -1282,6 +1282,7 @@ async function renderCloudSavesListInModal() {
         </div>
       </div>
     `;
+  }).join('');
 }
 
 window.crimxForceBackupAll = async function() {
