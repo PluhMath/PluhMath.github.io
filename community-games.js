@@ -785,8 +785,8 @@ export function ensurePublisherModal() {
   if (document.getElementById('pm-community-publisher-modal')) return;
 
   const modalHtml = `
-    <div class="crimx-modal-backdrop" id="pm-community-publisher-modal">
-      <div class="crimx-modal-box pm-publisher-modal" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+    <div class="crimx-modal-backdrop cm-modal-overlay" id="pm-community-publisher-modal" style="display:none;">
+      <div class="crimx-modal-box cm-modal-card pm-publisher-modal" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
         
         <div class="crimx-modal-header">
           <div class="crimx-modal-title">
@@ -848,68 +848,68 @@ export function ensurePublisherModal() {
           <div class="crimx-field">
             <label class="crimx-label">Game Thumbnail (File Upload)</label>
             <div class="pm-file-dropzone" id="pub-dropzone" onclick="document.getElementById('pub-thumb-file').click()">
-              <input type="file" id="pub-thumb-file" accept="image/png, image/jpeg, image/webp, image/gif" style="display:none" onchange="window.PluhCommunity.handleThumbnailPicked(event)">
-              <div id="pub-thumb-preview-container" style="display:none; width:100%; text-align:center;">
-                <img id="pub-thumb-preview-img" style="max-height:160px; border-radius:10px; border:1px solid var(--border-glass); margin-bottom:8px;">
-                <div style="font-size:0.75rem; color:var(--accent-cyan); font-weight:600;">✓ Image loaded • Click to replace</div>
+              <input type="file" id="pub-thumb-file" accept="image/*" style="display:none;" onchange="window.PluhCommunity.handleThumbnailPicked(event)">
+              <div id="pub-thumb-preview-container" style="display:none; margin-bottom:0.6rem;">
+                <img id="pub-thumb-preview-img" src="" alt="Thumbnail preview" style="max-width:240px; max-height:140px; border-radius:8px; object-fit:cover; border:1px solid rgba(255,255,255,0.2);">
+                <div style="font-size:0.75rem; color:var(--accent-cyan); margin-top:4px;">Click to change image</div>
               </div>
               <div id="pub-thumb-empty-prompt">
                 <div style="font-size:2rem; margin-bottom:0.4rem;">🖼️</div>
-                <div style="font-weight:700; color:#fff; font-size:0.9rem;">Click or drag to upload a picture</div>
-                <div style="font-size:0.74rem; color:var(--text-dim); margin-top:2px;">PNG, JPG, WebP supported • Automatically optimized</div>
+                <div style="font-weight:700; color:#fff; font-size:0.9rem;">Click or Drag & Drop to Upload Thumbnail</div>
+                <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">PNG, JPG, or WebP. Automatically resized & optimized.</div>
               </div>
             </div>
           </div>
 
-          <!-- Game Source: URL or HTML File -->
+          <!-- Source Type (Web Link vs HTML5 Single-File Code) -->
           <div class="crimx-field">
             <label class="crimx-label">Game Source Format *</label>
-            <div style="display:flex; gap:10px; margin-bottom:0.6rem;">
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.88rem; color:#fff;">
-                <input type="radio" name="gameSourceType" value="url" checked onchange="window.PluhCommunity.switchSourceType('url')">
-                <span>Playable Web Link (itch.io, GitHub, etc.)</span>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <label style="display:flex; align-items:center; gap:8px; padding:10px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); cursor:pointer; font-size:0.85rem; color:#fff;">
+                <input type="radio" name="sourceType" value="url" checked onchange="window.PluhCommunity.switchSourceType('url')">
+                <span>🌐 Web Link (HTTPS URL)</span>
               </label>
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.88rem; color:#fff;">
-                <input type="radio" name="gameSourceType" value="html" onchange="window.PluhCommunity.switchSourceType('html')">
-                <span>Direct HTML5 File / Code</span>
+              <label style="display:flex; align-items:center; gap:8px; padding:10px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); cursor:pointer; font-size:0.85rem; color:#fff;">
+                <input type="radio" name="sourceType" value="html" onchange="window.PluhCommunity.switchSourceType('html')">
+                <span>📄 HTML5 File / Code</span>
               </label>
-            </div>
-
-            <!-- URL Input Box -->
-            <div id="pub-source-url-box">
-              <input type="url" id="pub-game-url" class="crimx-input" placeholder="https://yourname.github.io/mygame or itch.io embed URL">
-              <div style="font-size:0.73rem; color:var(--text-dim); margin-top:4px;">Must be a direct playable HTTPS link.</div>
-            </div>
-
-            <!-- HTML5 File Upload Box -->
-            <div id="pub-source-html-box" style="display:none; flex-direction:column; gap:0.5rem;">
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:6px 14px;" onclick="document.getElementById('pub-html-file').click()">
-                  📂 Upload .html Game File
-                </button>
-                <input type="file" id="pub-html-file" accept=".html,.htm" style="display:none" onchange="window.PluhCommunity.handleHtmlFilePicked(event)">
-                <span id="pub-html-file-name" style="font-size:0.75rem; color:var(--text-dim);">or paste code below:</span>
-              </div>
-              <textarea id="pub-html-code" class="crimx-input" rows="4" style="font-family:'JetBrains Mono', monospace; font-size:0.78rem;" placeholder="<!DOCTYPE html><html>..."></textarea>
             </div>
           </div>
 
-          <!-- Controls Guide -->
+          <!-- URL Input Box -->
+          <div id="pub-source-url-box" class="crimx-field">
+            <label class="crimx-label">Game Web Embed URL *</label>
+            <input type="url" id="pub-url" class="crimx-input" placeholder="https://example.com/game or https://user.github.io/game">
+            <div style="font-size:0.72rem; color:var(--text-dim); margin-top:2px;">Must be a valid HTTPS link that allows iframe embedding.</div>
+          </div>
+
+          <!-- HTML Code Upload Box -->
+          <div id="pub-source-html-box" class="crimx-field" style="display:none; flex-direction:column; gap:0.6rem;">
+            <label class="crimx-label">Upload .html File or Paste Single-File Game Code *</label>
+            <input type="file" id="pub-html-file" accept=".html,.htm" style="display:none;" onchange="window.PluhCommunity.handleHtmlFilePicked(event)">
+            <div style="display:flex; gap:0.6rem;">
+              <button type="button" class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('pub-html-file').click()">
+                📁 Pick .HTML File
+              </button>
+              <span id="pub-html-filename" style="font-size:0.8rem; color:var(--text-dim); align-self:center;">No file chosen</span>
+            </div>
+            <textarea id="pub-html-code" class="crimx-input" rows="4" placeholder="Or paste <!DOCTYPE html> ... code here..." style="font-family:'JetBrains Mono', monospace; font-size:0.78rem;"></textarea>
+          </div>
+
+          <!-- How to Play & Controls -->
           <div class="crimx-field">
-            <label class="crimx-label">Key Controls (e.g. "WASD / Arrows to Move, Space to Jump")</label>
-            <input type="text" id="pub-controls" class="crimx-input" placeholder="e.g. Arrows: Move | Space: Attack | Z: Confirm">
+            <label class="crimx-label">How to Play & Controls (Optional)</label>
+            <textarea id="pub-how-to-play" class="crimx-input" rows="2" placeholder="e.g. Arrow keys or WASD to move, Space to jump..."></textarea>
           </div>
 
-          <!-- Submit and Test Actions -->
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.8rem; margin-top:0.6rem; padding-top:1rem; border-top:1px solid var(--border-subtle); flex-wrap:wrap;">
-            <button type="button" class="cm-btn cm-btn-blue" onclick="window.PluhCommunity.testRunInSandbox()" style="font-size:0.86rem; padding:0.6rem 1.1rem;">
-              🧪 Test Game Preview
+          <!-- Submit Buttons -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding-top:1rem; margin-top:0.5rem;">
+            <button type="button" class="cm-btn cm-btn-blue" onclick="window.PluhCommunity.testRunCurrentDraft()" title="Test play your game in a sandbox before publishing">
+              🧪 Test Play Draft
             </button>
             <div style="display:flex; gap:0.6rem;">
-              <button type="button" class="cm-btn cm-btn-blue" onclick="window.PluhCommunity.closePublisherModal()">
-                Cancel
-              </button>
-              <button type="submit" id="pub-submit-btn" class="cm-btn cm-btn-yellow" style="font-weight:800; padding:0.6rem 1.6rem;">
+              <button type="button" class="cm-btn cm-btn-blue" onclick="window.PluhCommunity.closePublisherModal()">Cancel</button>
+              <button type="submit" id="pub-submit-btn" class="cm-btn cm-btn-yellow" style="font-weight:800; padding:0.7rem 1.6rem;">
                 🚀 Publish Game
               </button>
             </div>
@@ -921,11 +921,11 @@ export function ensurePublisherModal() {
     </div>
 
     <!-- Test Sandbox Modal -->
-    <div class="crimx-modal-backdrop" id="pm-sandbox-modal">
-      <div class="crimx-modal-box" style="width:90vw; max-width:860px; height:80vh; display:flex; flex-direction:column; padding:0;">
+    <div class="crimx-modal-backdrop cm-modal-overlay" id="pm-sandbox-modal" style="display:none;">
+      <div class="crimx-modal-box cm-modal-card" style="width:90vw; max-width:860px; height:80vh; display:flex; flex-direction:column; padding:0;">
         <div style="padding:12px 18px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.5); border-bottom:1px solid var(--border-glass);">
           <div style="font-weight:700; color:#fff; font-size:0.9rem;">🧪 Sandbox Game Preview</div>
-          <button class="crimx-modal-close" onclick="document.getElementById('pm-sandbox-modal').classList.remove('active')">×</button>
+          <button class="crimx-modal-close" onclick="const m=document.getElementById('pm-sandbox-modal'); if(m){m.style.display='none';m.classList.remove('active');}">×</button>
         </div>
         <iframe id="pm-sandbox-iframe" style="flex:1; width:100%; height:100%; border:none; background:#000;" allow="autoplay; fullscreen; gamepad; pointer-lock"></iframe>
       </div>
@@ -955,12 +955,18 @@ export function openPublisherModal() {
 
   ensurePublisherModal();
   const modal = document.getElementById('pm-community-publisher-modal');
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+  }
 }
 
 export function closePublisherModal() {
   const modal = document.getElementById('pm-community-publisher-modal');
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
 }
 
 export function switchSourceType(type) {

@@ -2221,3 +2221,39 @@ body {
     align-items: stretch;
   }
 }
+
+/* Modal Form Fields */
+.crimx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.crimx-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.crimx-input, select.crimx-input, textarea.crimx-input {
+  width: 100%;
+  background: rgba(16, 22, 38, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88rem;
+  outline: none;
+  transition: var(--transition);
+  box-sizing: border-box;
+}
+
+.crimx-input:focus, select.crimx-input:focus, textarea.crimx-input:focus {
+  border-color: var(--accent-cyan);
+  background: rgba(22, 30, 52, 0.98);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+}
+

@@ -16,7 +16,24 @@
   <title>PluhCommunity — Play & Publish Community Web Games</title>
   <meta name="description" content="Discover, play, and publish community web games on PluhCommunity. Upload custom games, earn stars, and get featured in the main PluhMath catalogue.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23f59e0b%22/><text x=%2250%%22 y=%2268%%22 text-anchor=%22middle%22 font-size=%2260%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22%23000%22>★</text></svg>">
-  <link rel="stylesheet" href="coolmath.css">
+  <link rel="stylesheet" href="coolmath.css?v=2.2">
+  <style>
+    .crimx-modal-backdrop, .cm-modal-overlay {
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(3, 4, 8, 0.85) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      display: none !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 2500 !important;
+      padding: 1.5rem !important;
+    }
+    .crimx-modal-backdrop.active, .cm-modal-overlay.active {
+      display: flex !important;
+    }
+  </style>
 </head>
 <body data-page="community">
 
@@ -291,8 +308,8 @@
   </div> <!-- .pm-app-layout -->
 
   <!-- Owner Notifications Modal (Creator Program Release Alerts) -->
-  <div class="crimx-modal-backdrop" id="pm-owner-notif-modal">
-    <div class="crimx-modal-box" style="max-width: 580px; max-height: 85vh; overflow-y: auto;">
+  <div class="crimx-modal-backdrop cm-modal-overlay" id="pm-owner-notif-modal" style="display:none;">
+    <div class="crimx-modal-box cm-modal-card" style="max-width: 580px; max-height: 85vh; overflow-y: auto;">
       <div class="crimx-modal-header">
         <div class="crimx-modal-title">
           <span style="font-size:1.4rem;">🔔</span>
@@ -320,8 +337,8 @@
   </div>
 
   <!-- Program Application Modal (Curator Program or Creator Program) -->
-  <div class="crimx-modal-backdrop" id="pm-program-app-modal">
-    <div class="crimx-modal-box" style="max-width: 560px;">
+  <div class="crimx-modal-backdrop cm-modal-overlay" id="pm-program-app-modal" style="display:none;">
+    <div class="crimx-modal-box cm-modal-card" style="max-width: 560px;">
       <div class="crimx-modal-header">
         <div class="crimx-modal-title">
           <span id="app-modal-icon" style="font-size:1.4rem;">🛡️</span>
@@ -377,8 +394,8 @@
   </div>
 
   <!-- Curator & Owner Console Modal -->
-  <div class="crimx-modal-backdrop" id="pm-owner-console-modal">
-    <div class="crimx-modal-box" style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
+  <div class="crimx-modal-backdrop cm-modal-overlay" id="pm-owner-console-modal" style="display:none;">
+    <div class="crimx-modal-box cm-modal-card" style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
       <div class="crimx-modal-header">
         <div class="crimx-modal-title">
           <span style="font-size:1.4rem;">⚙️</span>
@@ -480,6 +497,7 @@
       const list = document.getElementById('owner-notif-list');
       if (!modal || !list) return;
 
+      modal.style.display = 'flex';
       modal.classList.add('active');
       list.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim);">Loading release alerts...</div>`;
 
@@ -530,7 +548,10 @@
 
     window.closeOwnerNotifModal = function() {
       const modal = document.getElementById('pm-owner-notif-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
     };
 
     window.clearOwnerNotifications = async function() {
@@ -571,12 +592,16 @@
       if (!modal) return;
 
       switchProgramTrack(type);
+      modal.style.display = 'flex';
       modal.classList.add('active');
     };
 
     window.closeProgramApplicationModal = function() {
       const modal = document.getElementById('pm-program-app-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
     };
 
     window.switchProgramTrack = function(track) {
@@ -624,6 +649,7 @@
     window.openOwnerConsoleModal = function() {
       const modal = document.getElementById('pm-owner-console-modal');
       if (modal) {
+        modal.style.display = 'flex';
         modal.classList.add('active');
         switchConsoleTab('curators');
       }
@@ -631,7 +657,10 @@
 
     window.closeOwnerConsoleModal = function() {
       const modal = document.getElementById('pm-owner-console-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
     };
 
     window.switchConsoleTab = async function(tab) {
