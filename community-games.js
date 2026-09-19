@@ -948,10 +948,8 @@ export function openPublisherModal() {
   if (!user) {
     if (window.openCrimXModal) {
       window.openCrimXModal();
-      showToast('Please sign in to publish your community game!', 'info');
-    } else {
-      alert('Please sign in to publish your community game!');
     }
+    showToast('Please sign in to publish your community game!', 'info');
     return;
   }
 
@@ -1009,7 +1007,7 @@ export function handleHtmlFilePicked(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  const nameEl = document.getElementById('pub-html-file-name');
+  const nameEl = document.getElementById('pub-html-file-name') || document.getElementById('pub-html-filename');
   if (nameEl) nameEl.textContent = `✓ ${file.name}`;
 
   const reader = new FileReader();
@@ -1027,7 +1025,7 @@ export function testRunInSandbox() {
   if (!iframe || !modal) return;
 
   if (sourceType === 'url') {
-    const url = (document.getElementById('pub-game-url')?.value || '').trim();
+    const url = (document.getElementById('pub-url')?.value || document.getElementById('pub-game-url')?.value || '').trim();
     if (!url) {
       showToast('Please provide a game link to test.', 'error');
       return;
@@ -1044,6 +1042,7 @@ export function testRunInSandbox() {
     iframe.srcdoc = code;
   }
 
+  modal.style.display = 'flex';
   modal.classList.add('active');
 }
 
@@ -1056,13 +1055,14 @@ export async function handleFormSubmit(event) {
   }
 
   try {
-    const title = document.getElementById('pub-title').value;
-    const category = document.getElementById('pub-category').value;
-    const icon = document.getElementById('pub-icon').value;
-    const desc = document.getElementById('pub-desc').value;
-    const controlsRaw = document.getElementById('pub-controls').value;
+    const title = document.getElementById('pub-title')?.value || '';
+    const category = document.getElementById('pub-category')?.value || 'arcade';
+    const icon = document.getElementById('pub-icon')?.value || '🎮';
+    const desc = document.getElementById('pub-desc')?.value || '';
+    const howToPlay = document.getElementById('pub-how-to-play')?.value || '';
+    const controlsRaw = document.getElementById('pub-controls')?.value || howToPlay || '';
     const sourceType = document.querySelector('input[name="gameSourceType"]:checked')?.value || 'url';
-    const gameUrl = document.getElementById('pub-game-url')?.value || '';
+    const gameUrl = document.getElementById('pub-url')?.value || document.getElementById('pub-game-url')?.value || '';
     const htmlContent = document.getElementById('pub-html-code')?.value || '';
 
     // Parse controls
@@ -1071,7 +1071,7 @@ export async function handleFormSubmit(event) {
       if (parts.length >= 2) {
         return { key: parts[0].trim(), desc: parts.slice(1).join(':').trim() };
       }
-      return { key: 'Action', desc: item.trim() };
+      return { key: 'Controls', desc: item.trim() };
     }).filter(c => c.desc);
 
     const gradients = [
@@ -1094,8 +1094,8 @@ export async function handleFormSubmit(event) {
       htmlContent,
       thumbnail: currentUploadedThumbnail,
       bgGradient,
-      controls: controls.length > 0 ? controls : [{ key: 'Mouse & Keyboard', desc: 'Interact' }],
-      howToPlay: 'Use standard keyboard and mouse controls to play.'
+      controls: controls.length > 0 ? controls : [{ key: 'Controls', desc: howToPlay || 'Standard keyboard & mouse' }],
+      howToPlay: howToPlay.trim() || 'Use standard keyboard and mouse controls to play.'
     });
 
     showToast(`🎉 "${game.title}" published to PluhCommunity!`, 'success');
@@ -1171,6 +1171,7 @@ window.PluhCommunity = {
   handleThumbnailPicked,
   handleHtmlFilePicked,
   testRunInSandbox,
+  testRunCurrentDraft: testRunInSandbox,
   handleFormSubmit,
   handleStarClick,
   handlePromoteClick,

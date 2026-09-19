@@ -787,20 +787,236 @@ export async function loadCloudSavesList() {
  * Delete a cloud save from PluhMath Firestore
  */
 export async function deleteGameCloudSave(gameId) {
-  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  if (!currentCrimXUser || !currentCrimXUser.uid) {
+    showToast('Please sign in to manage cloud saves.', 'info');
+    return;
+  }
   const cleanGameId = String(gameId).toLowerCase().trim();
+  const title = GAME_TITLES[cleanGameId] || cleanGameId;
   try {
     await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'saves', cleanGameId));
     try {
       await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'connected_apps', 'pluhmath', 'saves', cleanGameId));
     } catch (e) {}
     delete cloudSavesCache[cleanGameId];
-    showToast(`Deleted cloud save for ${GAME_TITLES[cleanGameId] || cleanGameId}`, 'info');
-    renderCloudSavesListInModal();
+    showToast(`🗑️ Deleted cloud backup for ${title}`, 'info');
+    await renderCloudSavesListInModal();
   } catch (err) {
     console.error('[PluhMath Cloud Save] Delete failed:', err);
+    showToast('Failed to delete cloud save: ' + err.message, 'error');
   }
 }
+
+/**
+ * Wipe local save data for a game from this browser (localStorage, iframe, IndexedDB)
+ */
+export async function wipeGameLocalSave(gameId) {
+  const cleanGameId = String(gameId).toLowerCase().trim();
+  const title = GAME_TITLES[cleanGameId] || cleanGameId;
+  try {
+    if (window.PluhSaveBridge && typeof window.PluhSaveBridge.wipeSaveDataForGame === 'function') {
+      await window.PluhSaveBridge.wipeSaveDataForGame(cleanGameId);
+    }
+
+    // Direct sweep of localStorage for any matching game keys or cache
+    const gameMatcher = SUPPORTED_GAMES_SAVES.find(g => g.id === cleanGameId || isMatchingGame(g.id, cleanGameId));
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      const lower = k.toLowerCase();
+      if (lower.startsWith(cleanGameId) || (gameMatcher && gameMatcher.match(k)) || lower.includes(`cache_${cleanGameId}`)) {
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+
+    delete cloudSavesCache[cleanGameId];
+    showToast(`🧹 Local save data for ${title} wiped from this browser!`, 'success');
+    await renderCloudSavesListInModal();
+  } catch (err) {
+    console.error('[PluhMath Save Wipe] Local wipe failed:', err);
+    showToast('Failed to wipe local save: ' + err.message, 'error');
+  }
+}
+
+/**
+ * Completely wipe a game save from BOTH cloud backup and local browser storage
+ */
+export async function wipeGameSaveEverywhere(gameId) {
+  const cleanGameId = String(gameId).toLowerCase().trim();
+  const title = GAME_TITLES[cleanGameId] || cleanGameId;
+  await deleteGameCloudSave(cleanGameId);
+  await wipeGameLocalSave(cleanGameId);
+  showToast(`💥 Completely removed ${title} save from cloud and device!`, 'success');
+}
+
+/**
+ * Restore cloud backup into browser storage upon user request
+ */
+export async function restoreGameCloudSaveToLocal(gameId) {
+  const cleanGameId = String(gameId).toLowerCase().trim();
+  const title = GAME_TITLES[cleanGameId] || cleanGameId;
+  const save = await loadGameFromCloud(cleanGameId);
+  if (!save || !save.data) {
+    showToast(`No cloud backup available to restore for ${title}`, 'error');
+    return;
+  }
+
+  if (window.PluhSaveBridge && typeof window.PluhSaveBridge.restoreAllSaveDataForGame === 'function') {
+    await window.PluhSaveBridge.restoreAllSaveDataForGame(cleanGameId, save);
+  } else {
+    for (const [k, v] of Object.entries(save.data)) {
+      if (!k.startsWith('__bridge_')) {
+        localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+      }
+    }
+  }
+
+  showToast(`📥 Successfully restored cloud save for ${title} into your browser!`, 'success');
+  await renderCloudSavesListInModal();
+}
+
+/**
+ * Wipe all local game save files from this browser
+ */
+export async function wipeAllLocalGameSaves() {
+  for (const g of SUPPORTED_GAMES_SAVES) {
+    if (window.PluhSaveBridge && typeof window.PluhSaveBridge.wipeSaveDataForGame === 'function') {
+      await window.PluhSaveBridge.wipeSaveDataForGame(g.id);
+    }
+  }
+  showToast('🧹 All local game save files have been wiped clean!', 'success');
+  await renderCloudSavesListInModal();
+}
+
+/**
+ * Permanently delete all cloud save backups for the user
+ */
+export async function deleteAllCloudSaves() {
+  if (!currentCrimXUser || !currentCrimXUser.uid) return;
+  try {
+    const saves = await loadCloudSavesList();
+    for (const s of saves) {
+      if (s.gameId) {
+        await deleteDoc(doc(db, 'users', currentCrimXUser.uid, 'saves', s.gameId));
+        delete cloudSavesCache[s.gameId];
+      }
+    }
+    showToast('🗑️ All cloud saves have been permanently deleted.', 'info');
+    await renderCloudSavesListInModal();
+  } catch(e) {
+    showToast('Error deleting saves: ' + e.message, 'error');
+  }
+}
+
+/**
+ * In-Modal Custom Confirmation Prompt (Strictly adheres to Rule 10 - No native prompt/confirm)
+ */
+window.showCrimXConfirmModal = function({ title, message, confirmText, confirmClass, onConfirm }) {
+  let modal = document.getElementById('crimx-confirm-dialog-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'crimx-confirm-dialog-modal';
+    modal.className = 'crimx-modal-backdrop cm-modal-overlay';
+    modal.style.cssText = 'z-index: 100000; display: none;';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="crimx-modal-box cm-modal-card" style="max-width: 440px; text-align: center; padding: 1.6rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.6rem;">⚠️</div>
+      <div style="font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; font-family: 'Outfit', sans-serif;">
+        ${escapeHtml(title || 'Confirm Action')}
+      </div>
+      <div style="font-size: 0.84rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 1.4rem;">
+        ${message}
+      </div>
+      <div style="display: flex; gap: 0.6rem; justify-content: center;">
+        <button type="button" class="cm-btn cm-btn-blue" style="padding: 0.5rem 1.1rem;" onclick="closeCrimXConfirmModal()">
+          Cancel
+        </button>
+        <button type="button" id="crimx-dialog-confirm-btn" class="cm-btn ${confirmClass || 'cm-btn-panic'}" style="padding: 0.5rem 1.2rem; font-weight: 800;">
+          ${escapeHtml(confirmText || 'Confirm')}
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+  modal.classList.add('active');
+
+  const btn = document.getElementById('crimx-dialog-confirm-btn');
+  if (btn) {
+    btn.onclick = async () => {
+      closeCrimXConfirmModal();
+      if (typeof onConfirm === 'function') {
+        await onConfirm();
+      }
+    };
+  }
+};
+
+window.closeCrimXConfirmModal = function() {
+  const modal = document.getElementById('crimx-confirm-dialog-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
+};
+
+window.confirmWipeGameLocalSave = function(gameId) {
+  const title = GAME_TITLES[gameId] || gameId;
+  showCrimXConfirmModal({
+    title: `Wipe Local Save?`,
+    message: `Are you sure you want to wipe local save files for <strong>${escapeHtml(title)}</strong> from this browser? This will permanently remove unwanted or friend saves from this device.`,
+    confirmText: 'Wipe Local Save',
+    confirmClass: 'cm-btn-panic',
+    onConfirm: () => wipeGameLocalSave(gameId)
+  });
+};
+
+window.confirmDeleteGameCloudSave = function(gameId) {
+  const title = GAME_TITLES[gameId] || gameId;
+  showCrimXConfirmModal({
+    title: `Delete Cloud Backup?`,
+    message: `Are you sure you want to delete the cloud backup for <strong>${escapeHtml(title)}</strong>? Your local save on this device will not be touched.`,
+    confirmText: 'Delete Cloud Backup',
+    confirmClass: 'cm-btn-panic',
+    onConfirm: () => deleteGameCloudSave(gameId)
+  });
+};
+
+window.confirmWipeGameEverywhere = function(gameId) {
+  const title = GAME_TITLES[gameId] || gameId;
+  showCrimXConfirmModal({
+    title: `Wipe Everywhere?`,
+    message: `This will permanently delete the save for <strong>${escapeHtml(title)}</strong> from BOTH your cloud account AND this browser. This completely eradicates the save.`,
+    confirmText: 'Wipe Everywhere',
+    confirmClass: 'cm-btn-panic',
+    onConfirm: () => wipeGameSaveEverywhere(gameId)
+  });
+};
+
+window.confirmWipeAllLocalSaves = function() {
+  showCrimXConfirmModal({
+    title: `Wipe ALL Local Game Saves?`,
+    message: `Are you sure you want to wipe all local save files and offline cache from this browser? This clears any friend saves or unwanted data from this computer. Cloud backups remain safe.`,
+    confirmText: 'Wipe All Local',
+    confirmClass: 'cm-btn-panic',
+    onConfirm: () => wipeAllLocalGameSaves()
+  });
+};
+
+window.confirmDeleteAllCloudSaves = function() {
+  showCrimXConfirmModal({
+    title: `Delete ALL Cloud Saves?`,
+    message: `Are you sure you want to permanently delete ALL cloud save backups on your CrimX account? This action cannot be reversed.`,
+    confirmText: 'Delete All Cloud Saves',
+    confirmClass: 'cm-btn-panic',
+    onConfirm: () => deleteAllCloudSaves()
+  });
+};
 
 // ============================================================================
 // AUTOMATIC CLOUD SAVE RESTORATION (ZERO MANUAL EFFORT)
@@ -969,30 +1185,13 @@ window.addEventListener('message', async (event) => {
     const messageId = data.messageId;
     console.debug('[CrimX Bridge] Game requested initial save data:', gameId, messageId);
 
-    let saveToReturn = null;
-    if (currentCrimXUser) {
-      const cloudSave = await loadGameFromCloud(gameId);
-      if (cloudSave && cloudSave.data) {
-        saveToReturn = cloudSave.data;
-        // Automatically write cloud save keys into localStorage so they survive offline play
-        for (const [k, v] of Object.entries(saveToReturn)) {
-          if (!k.startsWith('__bridge_')) {
-            localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
-          }
-        }
-        showToast(`☁️ Restored ${GAME_TITLES[gameId] || gameId} save from cloud!`, 'success');
-      }
-    }
-
-    // Fallback: If no cloud save found or not signed in, check existing localStorage
-    if (!saveToReturn) {
-      saveToReturn = {};
-      const gameMatcher = SUPPORTED_GAMES_SAVES.find(g => g.id === gameId || isMatchingGame(g.id, gameId));
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && (k.startsWith(gameId) || (gameMatcher && gameMatcher.match(k)) || k.startsWith('file'))) {
-          saveToReturn[k] = localStorage.getItem(k);
-        }
+    // Check existing localStorage (respects local state and user wipe actions)
+    let saveToReturn = {};
+    const gameMatcher = SUPPORTED_GAMES_SAVES.find(g => g.id === gameId || isMatchingGame(g.id, gameId));
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith(gameId) || (gameMatcher && gameMatcher.match(k)) || k.startsWith('file'))) {
+        saveToReturn[k] = localStorage.getItem(k);
       }
     }
 
@@ -1222,72 +1421,253 @@ function switchTab(tabId) {
   });
 }
 
+function detectAllLocalSaves() {
+  const localMap = {};
+  for (const game of SUPPORTED_GAMES_SAVES) {
+    let keyCount = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (game.match(k)) {
+        keyCount++;
+      }
+    }
+    const cacheKey = `pluhmath_cache_${game.id}`;
+    if (localStorage.getItem(cacheKey)) {
+      keyCount++;
+    }
+    if (keyCount > 0) {
+      localMap[game.id] = {
+        gameId: game.id,
+        title: game.title,
+        icon: game.icon,
+        keyCount: keyCount
+      };
+    }
+  }
+  return localMap;
+}
+
+window.crimxFilterSaves = function(q) {
+  const filter = (q || '').toLowerCase().trim();
+  const cards = document.querySelectorAll('.crimx-save-card');
+  cards.forEach(card => {
+    const title = card.dataset.gameTitle || '';
+    const id = card.dataset.gameId || '';
+    const match = !filter || title.includes(filter) || id.includes(filter);
+    card.style.display = match ? 'flex' : 'none';
+  });
+};
+
 async function renderCloudSavesListInModal() {
   const container = document.getElementById('crimx-cloud-saves-list');
   if (!container) return;
 
-  container.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-dim);">Loading cloud saves...</div>`;
-  const saves = await loadCloudSavesList();
+  container.innerHTML = `
+    <div style="text-align:center; padding:2.5rem 1rem; color:var(--text-dim);">
+      <div style="font-size:2.4rem; margin-bottom:0.6rem;">⏳</div>
+      <div style="font-weight:700; color:#fff; font-size:1.05rem;">Loading Cloud Saves Dashboard...</div>
+      <div style="font-size:0.78rem; margin-top:4px;">Scanning cloud backups and local device files</div>
+    </div>
+  `;
+
+  const cloudSaves = await loadCloudSavesList();
+  const localSaves = detectAllLocalSaves();
   const curGame = getCurrentPageGameId();
   const curGameTitle = curGame ? (GAME_TITLES[curGame] || curGame) : null;
 
-  if (!saves || saves.length === 0) {
-    container.innerHTML = `
-      <div style="text-align:center; padding:1.5rem; color:var(--text-dim); background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); border:1px dashed var(--border-subtle);">
-        <p style="margin-bottom:0.4rem; color:#fff; font-weight:600;">No Cloud Saves Found</p>
-        <p style="font-size:0.82rem; margin:0 0 1rem 0;">Play Run 3, Drift Boss, Tiny Fishing, Undertale, or any game while signed in. Your saves automatically backup to the cloud!</p>
-        ${curGameTitle ? `
-          <button class="cm-btn cm-btn-yellow" style="font-size:0.82rem; padding:0.5rem 1rem; margin:0 auto;" onclick="syncActiveGameToCloud()">
-            ⚡ Backup ${escapeHtml(curGameTitle)} Now
-          </button>
-        ` : ''}
-      </div>
-    `;
-    return;
-  }
+  const allGameMap = {};
+  SUPPORTED_GAMES_SAVES.forEach(g => {
+    allGameMap[g.id] = {
+      gameId: g.id,
+      title: g.title,
+      icon: g.icon,
+      cloudSave: null,
+      localSave: null
+    };
+  });
+
+  cloudSaves.forEach(cs => {
+    const gid = cs.gameId;
+    if (!allGameMap[gid]) {
+      allGameMap[gid] = {
+        gameId: gid,
+        title: cs.gameTitle || GAME_TITLES[gid] || gid,
+        icon: GAME_ICONS[gid] || '🎮',
+        cloudSave: cs,
+        localSave: null
+      };
+    } else {
+      allGameMap[gid].cloudSave = cs;
+      if (cs.gameTitle) allGameMap[gid].title = cs.gameTitle;
+    }
+  });
+
+  Object.values(localSaves).forEach(ls => {
+    const gid = ls.gameId;
+    if (!allGameMap[gid]) {
+      allGameMap[gid] = {
+        gameId: gid,
+        title: ls.title || GAME_TITLES[gid] || gid,
+        icon: ls.icon || GAME_ICONS[gid] || '🎮',
+        cloudSave: null,
+        localSave: ls
+      };
+    } else {
+      allGameMap[gid].localSave = ls;
+    }
+  });
+
+  const activeGames = Object.values(allGameMap).filter(g => g.cloudSave || g.localSave || g.gameId === curGame);
+  const totalCloud = cloudSaves.length;
+  const totalLocal = Object.keys(localSaves).length;
 
   container.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; padding:0.6rem 0.8rem; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
-      <div>
-        <div style="font-weight:700; color:#fff; font-size:0.92rem;">Active Cloud Backups</div>
-        <div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Dedicated saves per game • Protected against cache clearing</div>
+    <!-- Cloud Saves Hero Dashboard -->
+    <div class="crimx-saves-hero">
+      <div class="crimx-hero-top">
+        <div class="crimx-hero-title-wrap">
+          <div class="crimx-hero-icon">☁️</div>
+          <div>
+            <div class="crimx-hero-title">Cloud Saves & Backup Engine</div>
+            <div class="crimx-hero-subtitle">Dedicated game storage • Safe wipe controls • Local and cloud separation</div>
+          </div>
+        </div>
+
+        <div class="crimx-hero-stats">
+          <div class="crimx-hero-stat-pill online" title="Cloud Sync is active and operational">
+            <span class="crimx-pulse-dot"></span>
+            <span>Sync Active</span>
+          </div>
+          <div class="crimx-hero-stat-pill" title="Number of backups on the cloud">
+            <span>☁️</span>
+            <span>${totalCloud} Cloud Backups</span>
+          </div>
+          <div class="crimx-hero-stat-pill" title="Number of game saves on this browser">
+            <span>💾</span>
+            <span>${totalLocal} On Device</span>
+          </div>
+        </div>
       </div>
-      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-        ${curGameTitle ? `
-          <button class="cm-btn cm-btn-yellow" style="font-size:0.8rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="syncActiveGameToCloud()" title="Backup current game progress">
-            ⚡ Backup ${escapeHtml(curGameTitle)}
+
+      <!-- Action Toolbar -->
+      <div class="crimx-saves-toolbar">
+        <div class="crimx-toolbar-btns">
+          ${curGameTitle ? `
+            <button class="cm-btn cm-btn-yellow" style="font-size:0.78rem; padding:0.4rem 0.8rem; font-weight:800;" onclick="syncActiveGameToCloud()" title="Backup current game progress">
+              ⚡ Backup ${escapeHtml(curGameTitle)}
+            </button>
+          ` : ''}
+          <button class="cm-btn cm-btn-blue" style="font-size:0.78rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all local game saves">
+            ☁️ Backup All
           </button>
-        ` : ''}
-        <button class="cm-btn cm-btn-blue" style="font-size:0.8rem; padding:0.4rem 0.8rem;" onclick="crimxForceBackupAll()" title="Backup all local game saves">
-          ☁️ Backup All
-        </button>
+        </div>
+
+        <div class="crimx-toolbar-btns">
+          <button class="cm-btn cm-btn-panic" style="font-size:0.75rem; padding:0.4rem 0.75rem;" onclick="confirmWipeAllLocalSaves()" title="Wipe all local saves on this browser">
+            🧹 Wipe All Local
+          </button>
+          <button class="cm-btn cm-btn-panic" style="font-size:0.75rem; padding:0.4rem 0.75rem;" onclick="confirmDeleteAllCloudSaves()" title="Delete all cloud backups">
+            🗑️ Delete All Cloud
+          </button>
+        </div>
       </div>
     </div>
-  ` + saves.map(s => {
-    const title = s.gameTitle || GAME_TITLES[s.gameId] || s.gameId;
-    const icon = GAME_ICONS[s.gameId] || '🎮';
-    const dateStr = s.updatedAtIso ? new Date(s.updatedAtIso).toLocaleString() : 'Recently';
-    const items = s.itemCount ? `${s.itemCount} items` : 'Save Data';
 
-    return `
-      <div class="crimx-save-item">
-        <div class="crimx-save-meta">
-          <div class="crimx-save-title">${icon} ${escapeHtml(title)}</div>
-          <div class="crimx-save-sub">Synced: ${dateStr} • ${items}</div>
-        </div>
-        <div class="crimx-save-actions">
-          <button class="cm-btn cm-btn-panic" style="padding:0.35rem 0.65rem; font-size:0.78rem;" onclick="deleteGameCloudSave('${s.gameId}')" title="Delete cloud backup">
-            🗑️
+    <!-- Search / Filter Bar -->
+    <div class="crimx-saves-search-wrap">
+      <span class="crimx-saves-search-icon">🔍</span>
+      <input type="text" class="crimx-saves-search-input" placeholder="Search game saves by name..." oninput="crimxFilterSaves(this.value)">
+    </div>
+
+    <!-- Save Cards Grid -->
+    <div class="crimx-saves-grid" id="crimx-saves-cards-container">
+      ${activeGames.length === 0 ? `
+        <div style="text-align:center; padding:2rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-md); border:1px dashed var(--border-subtle);">
+          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎮</div>
+          <div style="font-weight:700; color:#fff; font-size:1rem; margin-bottom:0.3rem;">No Active Save Files Found</div>
+          <div style="font-size:0.8rem; color:var(--text-dim); max-width:400px; margin:0 auto 1.2rem auto;">
+            Play any game while signed in or click below to scan this browser for existing offline progress.
+          </div>
+          <button class="cm-btn cm-btn-yellow" style="font-weight:700; padding:0.5rem 1.2rem;" onclick="crimxForceBackupAll()">
+            ☁️ Scan & Backup Device Saves
           </button>
         </div>
-      </div>
-    `;
-  }).join('');
+      ` : activeGames.map(g => {
+        const hasCloud = Boolean(g.cloudSave);
+        const hasLocal = Boolean(g.localSave);
+        const dateStr = g.cloudSave?.updatedAtIso ? new Date(g.cloudSave.updatedAtIso).toLocaleString() : (hasLocal ? 'Saved on this device' : 'Not synced yet');
+        const itemCount = g.cloudSave?.itemCount ? `${g.cloudSave.itemCount} items` : (g.localSave?.keyCount ? `${g.localSave.keyCount} keys` : 'Save Data');
+
+        let statusBadge = '';
+        if (hasCloud && hasLocal) {
+          statusBadge = `<span class="crimx-save-status-badge crimx-badge-synced">🟢 Synced</span>`;
+        } else if (hasCloud && !hasLocal) {
+          statusBadge = `<span class="crimx-save-status-badge crimx-badge-cloudonly">☁️ Cloud Backup</span>`;
+        } else if (hasLocal) {
+          statusBadge = `<span class="crimx-save-status-badge crimx-badge-localonly">💾 On Device Only</span>`;
+        } else {
+          statusBadge = `<span class="crimx-save-status-badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim);">Ready</span>`;
+        }
+
+        return `
+          <div class="crimx-save-card" data-game-id="${escapeHtml(g.gameId)}" data-game-title="${escapeHtml(g.title.toLowerCase())}">
+            <div class="crimx-save-card-left">
+              <div class="crimx-save-icon-tile">${g.icon}</div>
+              <div class="crimx-save-card-meta">
+                <div class="crimx-save-card-title">
+                  <span>${escapeHtml(g.title)}</span>
+                  ${statusBadge}
+                </div>
+                <div class="crimx-save-card-details">
+                  ${hasCloud ? `Synced: ${dateStr} • ${itemCount}` : (hasLocal ? `Local data detected (${itemCount})` : 'No save recorded')}
+                </div>
+              </div>
+            </div>
+
+            <div class="crimx-save-card-actions">
+              ${hasLocal ? `
+                <button type="button" class="crimx-save-btn crimx-save-btn-backup" onclick="syncActiveGameToCloud('${g.gameId}')" title="Upload local save to cloud">
+                  ☁️ Backup
+                </button>
+                <button type="button" class="crimx-save-btn crimx-save-btn-wipe" onclick="confirmWipeGameLocalSave('${g.gameId}')" title="Wipe local save from this browser (removes unwanted or friend saves)">
+                  🧹 Wipe Local
+                </button>
+              ` : ''}
+
+              ${hasCloud ? `
+                <button type="button" class="crimx-save-btn crimx-save-btn-restore" onclick="restoreGameCloudSaveToLocal('${g.gameId}')" title="Restore cloud backup into this browser">
+                  📥 Restore
+                </button>
+                <button type="button" class="crimx-save-btn crimx-save-btn-delete" onclick="confirmDeleteGameCloudSave('${g.gameId}')" title="Delete cloud backup">
+                  🗑️ Delete Cloud
+                </button>
+              ` : ''}
+
+              ${(hasCloud && hasLocal) ? `
+                <button type="button" class="crimx-save-btn crimx-save-btn-delete" style="opacity:0.85;" onclick="confirmWipeGameEverywhere('${g.gameId}')" title="Wipe from both cloud and browser completely">
+                  💥 Wipe All
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
+
+window.deleteGameCloudSave = deleteGameCloudSave;
+window.wipeGameLocalSave = wipeGameLocalSave;
+window.wipeGameSaveEverywhere = wipeGameSaveEverywhere;
+window.restoreGameCloudSaveToLocal = restoreGameCloudSaveToLocal;
+window.wipeAllLocalGameSaves = wipeAllLocalGameSaves;
+window.deleteAllCloudSaves = deleteAllCloudSaves;
+window.renderCloudSavesListInModal = renderCloudSavesListInModal;
 
 window.crimxForceBackupAll = async function() {
   showToast('Scanning local save files to backup...', 'info');
-  autoSyncLocalToCloud();
+  await autoSyncLocalToCloud();
   await renderCloudSavesListInModal();
   showToast('All local game files synced to Cloud!', 'success');
 };

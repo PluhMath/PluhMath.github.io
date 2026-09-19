@@ -402,6 +402,70 @@
     }
   });
 
+  // ==========================================================================
+  // COMPLETE LOCAL SAVE PURGE (Parent localStorage, Cache, Iframe, IndexedDB)
+  // ==========================================================================
+
+  async function wipeSaveDataForGame(targetGameId) {
+    const gameId = normalizeGameId(targetGameId || getCurrentGameId());
+    const info = GAME_INFO[gameId] || { prefixes: [gameId], hasIndexedDB: true };
+
+    // 1. Remove all matching keys from parent window localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      const lower = k.toLowerCase();
+      const match = info.prefixes.some(p => lower.startsWith(p.toLowerCase()) || lower.includes(gameId)) || lower.includes(`cache_${gameId}`);
+      if (match) keysToRemove.push(k);
+    }
+    keysToRemove.push(`pluhmath_cache_${gameId}`);
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // 2. Clear matching keys from active iframe if loaded
+    const iframe = document.getElementById('game-iframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        const frameStorage = iframe.contentWindow.localStorage;
+        if (frameStorage) {
+          const frameRemove = [];
+          for (let i = 0; i < frameStorage.length; i++) {
+            const k = frameStorage.key(i);
+            if (!k) continue;
+            const lower = k.toLowerCase();
+            const match = info.prefixes.some(p => lower.startsWith(p.toLowerCase()) || lower.includes(gameId)) || frameStorage.length < 30;
+            if (match) frameRemove.push(k);
+          }
+          frameRemove.forEach(k => frameStorage.removeItem(k));
+        }
+      } catch(e) {}
+
+      if (info.hasIndexedDB && iframe.contentWindow.indexedDB) {
+        try {
+          iframe.contentWindow.indexedDB.deleteDatabase('/_savedata');
+        } catch(e) {}
+      }
+
+      try {
+        iframe.contentWindow.postMessage({
+          type: 'clearSaveData',
+          gameId: gameId
+        }, '*');
+      } catch(e) {}
+    }
+
+    // 3. Clear Parent Window IndexedDB if applicable
+    if (info.hasIndexedDB && window.indexedDB) {
+      try {
+        window.indexedDB.deleteDatabase('/_savedata');
+      } catch(e) {}
+    }
+
+    lastDispatchedSnapshot = '';
+    console.debug(`[PluhSaveBridge] Successfully wiped local save data for ${getGameTitle(gameId)}.`);
+    return true;
+  }
+
   // Global exports
   global.PluhSaveBridge = {
     normalizeGameId,
@@ -409,6 +473,7 @@
     getCurrentGameId,
     extractAllSaveDataForGame,
     restoreAllSaveDataForGame,
+    wipeSaveDataForGame,
     readIndexedDBDatabase,
     writeIndexedDBDatabase
   };
